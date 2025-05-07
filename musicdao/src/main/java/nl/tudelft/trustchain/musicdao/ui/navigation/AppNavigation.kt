@@ -65,31 +65,14 @@ fun AppNavigation(
 
     daoViewModel.initManager()
 
-
-    var startScreen = Screen.Home.route
-    val screenViewModel: SearchScreenViewModel = hiltViewModel()
-    val releases by screenViewModel.searchResult.collectAsState(listOf())
-
-    Log.d("Ioana", "Releases: $releases")
-    if (releases.isNotEmpty()) {
-        Log.d("Ioana", "releases not empty")
-        val pick = releases.firstOrNull { !it.songs.isNullOrEmpty() }
-        // pick is an Album but has zero songs, need to figure how and where to get the songs
-//        val song = remember(pick) { pick.random() }
-//        LaunchedEffect(song) {
-//            playerViewModel.playDownloadedTrack(song)
-//        }
-//        startScreen = Screen.FullPlayerScreen.route
-//            }
-//        }
-    }
-
     AnimatedNavHost(
         modifier = Modifier.fillMaxSize(),
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
         navController = navController,
-        startDestination = startScreen,
+//        startDestination = Screen.Home.route,
+        startDestination = Screen.FullPlayerScreen.route,
+
         builder = {
             composable(Screen.Home.route) {
                 val searchScreenViewModel: SearchScreenViewModel = hiltViewModel()

@@ -164,7 +164,7 @@ class MusicActivity : AppCompatActivity() {
         }
 
         setContent {
-            MusicDAOApp()
+            MusicDAOApp(albumRepository)
         }
     }
 

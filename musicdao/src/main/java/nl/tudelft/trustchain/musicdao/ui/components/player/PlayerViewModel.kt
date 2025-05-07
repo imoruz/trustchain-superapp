@@ -7,6 +7,10 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.asFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import nl.tudelft.trustchain.musicdao.core.repositories.model.Song
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
@@ -16,9 +20,18 @@ import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.io.File
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.flow.map
+import nl.tudelft.trustchain.musicdao.core.repositories.AlbumRepository
+import nl.tudelft.trustchain.musicdao.core.repositories.model.Album
 
-class PlayerViewModel(context: Context) : ViewModel() {
+class PlayerViewModel(context: Context, albumRepository: AlbumRepository) : ViewModel() {
+
     private val _playingTrack: MutableStateFlow<Song?> = MutableStateFlow(null)
     val playingTrack: StateFlow<Song?> = _playingTrack
 
@@ -27,6 +40,45 @@ class PlayerViewModel(context: Context) : ViewModel() {
 
     val exoPlayer by lazy {
         ExoPlayer.Builder(context).build()
+    }
+
+
+    init {
+        // ② now you can collect albums, pick a random one, and play it
+        viewModelScope.launch {
+            albumRepository.refreshCache()
+            albumRepository
+                .getAlbumsFlow()                  // LiveData<List<Album>>
+                .asFlow()                         // Flow<List<Album>>
+                .map { albums ->
+                    // turn each emission into a Pair(albums, allSongs)
+                    val allSongs = albums.flatMap { it.songs.orEmpty() }
+                    albums to allSongs
+                }
+                // only continue once there *are* songs AND nothing is yet playing
+                .filter { (_, allSongs) ->
+                    val ready = allSongs.isNotEmpty() && _playingTrack.value == null
+                    Log.d(
+                        "Ioana",
+                        "Filter check — hasSongs=${allSongs.isNotEmpty()}, " +
+                            "noTrackYet=${_playingTrack.value == null} → $ready"
+                    )
+                    ready
+                }
+                // 4️⃣ suspend until that condition is first met
+                .first()
+                // 5️⃣ now pick & play your random track
+                .let { (albums, allSongs) ->
+                    Log.d("Ioana", "Songs are ready; launching random play")
+                    val randomSong = allSongs.random()
+                    // find its album so you can grab the cover
+                    val cover = albums
+                        .first { it.songs.orEmpty().contains(randomSong) }
+                        .cover
+
+                    playDownloadedTrack(randomSong, cover)
+                }
+        }
     }
 
     private fun buildMediaSource(
@@ -40,6 +92,7 @@ class PlayerViewModel(context: Context) : ViewModel() {
         return ProgressiveMediaSource.Factory(dataSourceFactory)
             .createMediaSource(mediaItem)
     }
+
 
     fun playDownloadedTrack(
         track: Song,
@@ -79,12 +132,12 @@ class PlayerViewModel(context: Context) : ViewModel() {
     }
 
     companion object {
-        fun provideFactory(context: Context): ViewModelProvider.Factory =
+        fun provideFactory(context: Context, albumRepository: AlbumRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     return PlayerViewModel(
-                        context
+                        context, albumRepository
                     ) as T
                 }
             }
