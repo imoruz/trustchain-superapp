@@ -5,10 +5,13 @@ package nl.tudelft.trustchain.musicdao.ui.components.player
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.asFlow
+import androidx.lifecycle.map
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import nl.tudelft.trustchain.musicdao.core.repositories.model.Song
@@ -18,19 +21,18 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
+import nl.tudelft.trustchain.musicdao.core.cache.CacheDatabase
+import nl.tudelft.trustchain.musicdao.core.cache.entities.AlbumEntity
 import nl.tudelft.trustchain.musicdao.core.repositories.AlbumRepository
-import nl.tudelft.trustchain.musicdao.core.repositories.model.Album
 
-class PlayerViewModel(context: Context, albumRepository: AlbumRepository) : ViewModel() {
+class PlayerViewModel(context: Context, database: CacheDatabase) : ViewModel() {
 
     private val _playingTrack: MutableStateFlow<Song?> = MutableStateFlow(null)
     val playingTrack: StateFlow<Song?> = _playingTrack
@@ -41,43 +43,34 @@ class PlayerViewModel(context: Context, albumRepository: AlbumRepository) : View
     val exoPlayer by lazy {
         ExoPlayer.Builder(context).build()
     }
-
+    private var releaseLiveData: LiveData<List<AlbumEntity>> = MutableLiveData(null)
 
     init {
-        // ② now you can collect albums, pick a random one, and play it
+        // Collect albums and play a random song with the cover image
         viewModelScope.launch {
-            albumRepository.refreshCache()
-            albumRepository
-                .getAlbumsFlow()                  // LiveData<List<Album>>
-                .asFlow()                         // Flow<List<Album>>
-                .map { albums ->
-                    // turn each emission into a Pair(albums, allSongs)
-                    val allSongs = albums.flatMap { it.songs.orEmpty() }
-                    albums to allSongs
-                }
-                // only continue once there *are* songs AND nothing is yet playing
-                .filter { (_, allSongs) ->
-                    val ready = allSongs.isNotEmpty() && _playingTrack.value == null
-                    Log.d(
-                        "Ioana",
-                        "Filter check — hasSongs=${allSongs.isNotEmpty()}, " +
-                            "noTrackYet=${_playingTrack.value == null} → $ready"
-                    )
-                    ready
-                }
-                // 4️⃣ suspend until that condition is first met
-                .first()
-                // 5️⃣ now pick & play your random track
-                .let { (albums, allSongs) ->
-                    Log.d("Ioana", "Songs are ready; launching random play")
-                    val randomSong = allSongs.random()
-                    // find its album so you can grab the cover
-                    val cover = albums
-                        .first { it.songs.orEmpty().contains(randomSong) }
-                        .cover
+            // Get all album entities from the database
+            releaseLiveData = database.dao.getAllLiveData()
 
-                    playDownloadedTrack(randomSong, cover)
-                }
+            // Collect the songs and map them to List<Song> with cover image
+            val allSongs: List<Pair<Song, File?>> = releaseLiveData
+                .map { albumEntities ->
+                    albumEntities.map { it.toAlbum() }  // Convert AlbumEntity to Album
+                        .flatMap { album ->
+                            album.songs.orEmpty().map { song ->
+                                // Pair each song with its album's cover
+                                song to album.cover
+                            }
+                        }
+                }.asFlow().first() // Collect the first value from the flow
+
+            // Pick the first song (or random one, depending on your logic)
+            val (song, cover) = allSongs.firstOrNull() ?: return@launch // Get the first song with cover
+
+            // Ensure we have a valid song and cover image
+            song.let {
+                // Play the song with the album cover
+                playDownloadedTrack(it, cover)
+            }
         }
     }
 
@@ -132,12 +125,12 @@ class PlayerViewModel(context: Context, albumRepository: AlbumRepository) : View
     }
 
     companion object {
-        fun provideFactory(context: Context, albumRepository: AlbumRepository): ViewModelProvider.Factory =
+        fun provideFactory(context: Context, database: CacheDatabase): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     return PlayerViewModel(
-                        context, albumRepository
+                        context, database
                     ) as T
                 }
             }
