@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -30,6 +32,8 @@ fun Drawer(
     database: CacheDatabase
 ) {
     val profile = profileScreenViewModel.profile.collectAsState()
+    val peerAmount by profileScreenViewModel.peerAmount.observeAsState(0)
+    val totalReleaseAmount by profileScreenViewModel.totalReleaseAmount.observeAsState(0)
     val albumStatsState = remember { mutableStateOf(emptyList<AlbumEntity>()) }
 
     LaunchedEffect(Unit) {
@@ -68,6 +72,10 @@ fun Drawer(
                     Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null)
                 }
             }
+        }
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Discovered $totalReleaseAmount releases")
+            Text(text = "Discovered $peerAmount peers")
         }
         Divider()
         Column {
