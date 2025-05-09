@@ -30,7 +30,7 @@ class DownloadFinishUseCase(
                 val root = Paths.get("${cachePath.getPath()}/torrents/$infoHash")
 
                 val mp3Files = FileProcessor.getMP3Files(root)
-                Log.d("MusicDao", "DownloadFinishUseCase: mp3 files in $root: $mp3Files")
+                Log.d("MusicDao", "DownloadFinishUseCase: mp3 files in ${root}: $mp3Files")
 
                 val songs =
                     mp3Files?.map {

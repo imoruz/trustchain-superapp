@@ -1,5 +1,6 @@
 package nl.tudelft.trustchain.musicdao.ui.navigation
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -11,7 +12,14 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
@@ -32,13 +40,16 @@ import nl.tudelft.trustchain.musicdao.ui.screens.wallet.BitcoinWalletScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.wallet.BitcoinWalletViewModel
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
+import nl.tudelft.trustchain.musicdao.core.repositories.model.Album
 import nl.tudelft.trustchain.musicdao.ui.screens.dao.*
 import nl.tudelft.trustchain.musicdao.ui.screens.debug.DebugScreenViewModel
+import nl.tudelft.trustchain.musicdao.ui.screens.home.HomeScreenViewModel
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.EditProfileScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreenViewModel
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.ProfileScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.profileMenu.ProfileMenuScreen
+import nl.tudelft.trustchain.musicdao.ui.screens.release.ReleaseScreenViewModel
 
 @ExperimentalAnimationApi
 @ExperimentalFoundationApi
@@ -59,7 +70,9 @@ fun AppNavigation(
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
         navController = navController,
-        startDestination = Screen.Home.route,
+//        startDestination = Screen.Home.route,
+        startDestination = Screen.FullPlayerScreen.route,
+
         builder = {
             composable(Screen.Home.route) {
                 val searchScreenViewModel: SearchScreenViewModel = hiltViewModel()
