@@ -46,29 +46,20 @@ class PlayerViewModel(context: Context, database: CacheDatabase) : ViewModel() {
     private var releaseLiveData: LiveData<List<AlbumEntity>> = MutableLiveData(null)
 
     init {
-        // Collect albums and play a random song with the cover image
         viewModelScope.launch {
-            // Get all album entities from the database
             releaseLiveData = database.dao.getAllLiveData()
-
-            // Collect the songs and map them to List<Song> with cover image
+            Log.d("MusicDisplay", releaseLiveData.value.toString())
             val allSongs: List<Pair<Song, File?>> = releaseLiveData
                 .map { albumEntities ->
-                    albumEntities.map { it.toAlbum() }  // Convert AlbumEntity to Album
+                    albumEntities.map { it.toAlbum() }
                         .flatMap { album ->
                             album.songs.orEmpty().map { song ->
-                                // Pair each song with its album's cover
                                 song to album.cover
                             }
                         }
-                }.asFlow().first() // Collect the first value from the flow
-
-            // Pick the first song (or random one, depending on your logic)
-            val (song, cover) = allSongs.firstOrNull() ?: return@launch // Get the first song with cover
-
-            // Ensure we have a valid song and cover image
+                }.asFlow().first()
+            val (song, cover) = allSongs.firstOrNull() ?: return@launch
             song.let {
-                // Play the song with the album cover
                 playDownloadedTrack(it, cover)
             }
         }

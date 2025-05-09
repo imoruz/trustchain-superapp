@@ -30,15 +30,17 @@ class FileProcessor {
 
         fun getMP3Files(path: Path): List<Mp3File>? {
             val files = getFiles(path) ?: return null
-            val mp3Files =
-                files.toList().filter {
-                    it.extension == "mp3"
-                }
+            Log.d("MusicDao", "DownloadFinishUseCase: ${files}")
+            val allowedExtensions = listOf("mp3", "m4a")
+            val mp3Files = files.toList()
+                .filter { allowedExtensions.contains(it.extension.lowercase()) }
+                .onEach { Log.d("MusicFile", "Found file: ${it.absolutePath}") }
 
             return mp3Files.mapNotNull {
                 try {
                     Mp3File(it)
                 } catch (e: Exception) {
+                    Log.e("Mp3Parse", "Failed to parse ${it.absolutePath}: ${e.message}")
                     null
                 }
             }
