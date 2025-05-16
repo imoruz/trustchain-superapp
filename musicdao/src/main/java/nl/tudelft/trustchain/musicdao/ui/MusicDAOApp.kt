@@ -9,6 +9,8 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -50,31 +52,38 @@ fun MusicDAOApp(database: CacheDatabase) {
             scaffoldState = scaffoldState,
             floatingActionButtonPosition = FabPosition.End,
             floatingActionButton = {
-                FloatingActionButton(
-                    onClick = {
-                        val x = navController as NavController
-                        x.navigate(Screen.FullPlayerScreen.route)
+                val downloadedCount by playerViewModel.downloadedCount.collectAsState()
+                if (downloadedCount != 0) {
+
+                    FloatingActionButton(
+                        onClick = {
+                            val x = navController as NavController
+                            x.navigate(Screen.FullPlayerScreen.route)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null
+                        )
                     }
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PlayArrow,
-                        contentDescription = null
-                    )
-                }
-            },
-            drawerContent = { Drawer(navController, ownProfileViewScreenModel, database) },
+                } },
+            drawerContent = { Drawer(navController, ownProfileViewScreenModel, database, playerViewModel) },
             content = { paddingValues ->
                 Column(modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())) {
                     Column(modifier = Modifier.weight(2f)) {
                         AppNavigation(navController, playerViewModel, ownProfileViewScreenModel)
                     }
-                    MinimizedPlayer(
-                        playerViewModel = playerViewModel,
-                        navController = navController,
-                        modifier =
-                            Modifier
-                                .align(Alignment.End)
-                    )
+                    val downloadedCount by playerViewModel.downloadedCount.collectAsState()
+                    if (downloadedCount != 0) {
+                        MinimizedPlayer(
+                            playerViewModel = playerViewModel,
+                            navController = navController,
+                            modifier =
+                                Modifier
+                                    .align(Alignment.End)
+                        )
+                    }
+
                 }
             },
             bottomBar = { BottomNavigationBar(navController) },

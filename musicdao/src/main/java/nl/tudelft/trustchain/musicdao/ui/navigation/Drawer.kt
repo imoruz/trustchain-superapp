@@ -23,13 +23,15 @@ import nl.tudelft.trustchain.musicdao.core.cache.entities.AlbumEntity
 import nl.tudelft.trustchain.musicdao.core.repositories.AlbumRepository
 import nl.tudelft.trustchain.musicdao.core.repositories.model.Album
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreenViewModel
+import nl.tudelft.trustchain.musicdao.ui.components.player.PlayerViewModel
 
 @ExperimentalMaterialApi
 @Composable
 fun Drawer(
     navController: NavController,
     profileScreenViewModel: MyProfileScreenViewModel,
-    database: CacheDatabase
+    database: CacheDatabase,
+    playerViewModel: PlayerViewModel
 ) {
     val profile = profileScreenViewModel.profile.collectAsState()
     val peerAmount by profileScreenViewModel.peerAmount.observeAsState(0)
@@ -89,12 +91,13 @@ fun Drawer(
 
         Divider()
         Column (modifier = Modifier.padding(top = 20.dp)){
-            val downloadedCount = albumStatsState.value.count { it.isDownloaded }
-
+            val downloadedCount2 = albumStatsState.value.count { it.isDownloaded }
+            val downloadedCount by playerViewModel.downloadedCount.collectAsState()
             Text("Statistics", style = MaterialTheme.typography.h6)
 
             Text("Total Discovered Albums: ${albumStatsState.value.size}")
-            Text("Download In Progress: ${albumStatsState.value.size - downloadedCount}")
+            Text("Download In Progress: ${albumStatsState.value.size - downloadedCount2}")
+            Text("Downloaded Albums: $downloadedCount2")
             Text("Downloaded Albums: $downloadedCount")
 
 

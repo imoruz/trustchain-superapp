@@ -31,6 +31,7 @@ import kotlinx.coroutines.isActive
 import nl.tudelft.trustchain.musicdao.core.cache.CacheDatabase
 import nl.tudelft.trustchain.musicdao.core.cache.entities.AlbumEntity
 import nl.tudelft.trustchain.musicdao.core.repositories.AlbumRepository
+import nl.tudelft.trustchain.musicdao.ui.components.player.PlayerViewModel
 
 class PlayerViewModel(context: Context, database: CacheDatabase) : ViewModel() {
 
@@ -40,6 +41,9 @@ class PlayerViewModel(context: Context, database: CacheDatabase) : ViewModel() {
     private val _coverFile: MutableStateFlow<File?> = MutableStateFlow(null)
     val coverFile: StateFlow<File?> = _coverFile
 
+    private val _downloadedCount = MutableStateFlow(0)
+    val downloadedCount: StateFlow<Int> = _downloadedCount
+
     val exoPlayer by lazy {
         ExoPlayer.Builder(context).build()
     }
@@ -47,6 +51,14 @@ class PlayerViewModel(context: Context, database: CacheDatabase) : ViewModel() {
 
     init {
         viewModelScope.launch {
+
+            database.dao.getAllLiveData().asFlow().collect { albumEntities ->
+                _downloadedCount.value = albumEntities.count { it.isDownloaded }
+            }
+
+
+
+
             releaseLiveData = database.dao.getAllLiveData()
             Log.d("MusicDisplay", releaseLiveData.value.toString())
             val allSongs: List<Pair<Song, File?>> = releaseLiveData
