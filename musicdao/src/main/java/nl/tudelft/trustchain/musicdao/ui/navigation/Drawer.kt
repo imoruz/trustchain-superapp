@@ -86,7 +86,12 @@ fun Drawer(
                 Text("Settings")
             }
         }
-
+        Divider()
+            DropdownMenuItem(onClick = {
+                // Call advertising functionality here
+            }) {
+                Text("Become shared wallet")
+            }
         Divider()
         Column (modifier = Modifier.padding(top = 20.dp)){
             val downloadedCount = albumStatsState.value.count { it.isDownloaded }
