@@ -1,5 +1,6 @@
 package nl.tudelft.trustchain.musicdao.ui.screens.donate
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -18,7 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Button
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import nl.tudelft.trustchain.musicdao.ui.screens.profileMenu.CustomMenuItem
+import androidx.compose.runtime.getValue
 
 
 @Composable
@@ -28,6 +32,18 @@ fun SharedDonateScreen(
 ) {
     val amount = rememberSaveable { mutableStateOf("0.1") }
     val coroutine = rememberCoroutineScope()
+
+    // Start advertising as shared wallet
+    val publicKey by bitcoinWalletViewModel.publicKey.collectAsState()
+    LaunchedEffect(publicKey) {
+        if (!publicKey.isNullOrBlank()) {
+            bitcoinWalletViewModel.sharedWalletNsdManager.startAdvertisingSharedWallet(
+                walletAddress = publicKey!!,
+                deviceName = "MyPhoneSharedWallet"
+            )
+            Log.d("SharedWallet", "Started advertising shared wallet: $publicKey")
+        }
+    }
 
     fun send() {
         val confirmedBalance = bitcoinWalletViewModel.confirmedBalance.value
@@ -43,7 +59,7 @@ fun SharedDonateScreen(
                 return@launch
             }
 
-            val result = bitcoinWalletViewModel.donate(sharedWalletAddress, amount.value)
+            val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress, amount.value)
             if (result) {
                 SnackbarHandler.displaySnackbar("Donation sent to shared wallet")
                 navController.popBackStack()

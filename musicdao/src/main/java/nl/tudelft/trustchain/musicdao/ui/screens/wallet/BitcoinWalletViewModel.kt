@@ -21,7 +21,7 @@ import nl.tudelft.trustchain.musicdao.core.networking.SharedWalletNsdManager
 @HiltViewModel
 class BitcoinWalletViewModel
     @Inject
-    constructor(val walletService: WalletService, val artistRepository: ArtistRepository, private val sharedWalletNsdManager: SharedWalletNsdManager) : ViewModel() {
+    constructor(val walletService: WalletService, val artistRepository: ArtistRepository, val sharedWalletNsdManager: SharedWalletNsdManager) : ViewModel() {
         val publicKey: MutableStateFlow<String?> = MutableStateFlow(null)
         val confirmedBalance: MutableStateFlow<Coin?> = MutableStateFlow(null)
         val estimatedBalance: MutableStateFlow<String?> = MutableStateFlow(null)
@@ -78,7 +78,15 @@ class BitcoinWalletViewModel
             return walletService.sendCoins(bitcoinPublicKey, amount)
         }
 
-        companion object {
+        suspend fun donateToAddress(
+            address: String,
+            amount: String
+        ): Boolean {
+            return walletService.sendCoins(address, amount)
+        }
+
+
+    companion object {
             const val REFRESH_DELAY = 1000L
         }
     }
