@@ -33,6 +33,10 @@ sealed class Screen(val route: String) {
         fun createRoute(publicKey: String) = "profile/$publicKey/donate"
     }
 
+    object SharedDonate: Screen("profile/sharedDonate") {
+
+    }
+
     object DaoRoute : Screen("DaoRoute")
 
     object DaoDetailRoute : Screen("dao/{daoId}/detail") {

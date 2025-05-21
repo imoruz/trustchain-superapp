@@ -9,16 +9,19 @@ import nl.tudelft.trustchain.musicdao.ui.SnackbarHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.bitcoinj.core.Coin
 import org.bitcoinj.wallet.Wallet
 import javax.inject.Inject
+import nl.tudelft.trustchain.musicdao.core.networking.SharedWalletNsdManager
+
 
 @HiltViewModel
 class BitcoinWalletViewModel
     @Inject
-    constructor(val walletService: WalletService, val artistRepository: ArtistRepository) : ViewModel() {
+    constructor(val walletService: WalletService, val artistRepository: ArtistRepository, private val sharedWalletNsdManager: SharedWalletNsdManager) : ViewModel() {
         val publicKey: MutableStateFlow<String?> = MutableStateFlow(null)
         val confirmedBalance: MutableStateFlow<Coin?> = MutableStateFlow(null)
         val estimatedBalance: MutableStateFlow<String?> = MutableStateFlow(null)
@@ -28,9 +31,10 @@ class BitcoinWalletViewModel
 
         val faucetInProgress: MutableStateFlow<Boolean> = MutableStateFlow(false)
         val isStarted: MutableStateFlow<Boolean> = MutableStateFlow(false)
+        val sharedWalletAddress: StateFlow<String?> = sharedWalletNsdManager.discoveredSharedWalletAddress
 
-        init {
-
+    init {
+            sharedWalletNsdManager.startDiscovery()
             viewModelScope.launch {
 
                 while (isActive) {

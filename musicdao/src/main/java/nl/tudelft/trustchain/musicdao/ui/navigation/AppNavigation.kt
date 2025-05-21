@@ -43,6 +43,7 @@ import com.google.accompanist.navigation.animation.composable
 import nl.tudelft.trustchain.musicdao.core.repositories.model.Album
 import nl.tudelft.trustchain.musicdao.ui.screens.dao.*
 import nl.tudelft.trustchain.musicdao.ui.screens.debug.DebugScreenViewModel
+import nl.tudelft.trustchain.musicdao.ui.screens.donate.SharedDonateScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.home.HomeScreenViewModel
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.EditProfileScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreen
@@ -237,6 +238,12 @@ fun AppNavigation(
                 }
             ) {
                 FullPlayerScreen(playerViewModel)
+            }
+            composable(Screen.SharedDonate.route) {
+                SharedDonateScreen(
+                    bitcoinWalletViewModel = hiltViewModel(),
+                    navController = navController
+                )
             }
         }
     )

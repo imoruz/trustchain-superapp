@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +14,7 @@ import javax.inject.Singleton
 
 @Singleton
 class SharedWalletNsdManager @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
     // Android's NSD manager used for registering and discovering local network services
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
