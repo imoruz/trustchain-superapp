@@ -80,9 +80,10 @@ class BitcoinWalletViewModel
 
         suspend fun donateToAddress(
             address: String,
-            amount: String
+            amount: String,
+            metadata: String? = null
         ): Boolean {
-            return walletService.sendCoins(address, amount)
+            return walletService.sendCoins(address, amount, metadata)
         }
 
 

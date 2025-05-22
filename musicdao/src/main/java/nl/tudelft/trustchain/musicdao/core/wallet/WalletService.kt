@@ -9,6 +9,7 @@ import org.bitcoinj.core.Coin
 import org.bitcoinj.core.Transaction
 import org.bitcoinj.core.listeners.DownloadProgressTracker
 import org.bitcoinj.kits.WalletAppKit
+import org.bitcoinj.script.ScriptBuilder
 import org.bitcoinj.wallet.SendRequest
 import org.bitcoinj.wallet.Wallet
 import java.io.IOException
@@ -68,7 +69,8 @@ class WalletService(val config: WalletConfig, private val app: WalletAppKit) {
      */
     fun sendCoins(
         publicKey: String,
-        coinsAmount: String
+        coinsAmount: String,
+        metadata: String? = null
     ): Boolean {
         Log.d("MusicDao", "Wallet (1): sending $coinsAmount to $publicKey")
 
@@ -91,6 +93,17 @@ class WalletService(val config: WalletConfig, private val app: WalletAppKit) {
             } ?: return false
 
         val sendRequest = SendRequest.to(targetAddress, Coin.valueOf(satoshiAmount))
+
+        metadata?.let {
+            val opReturnBytes = it.toByteArray(Charsets.UTF_8)
+            if (opReturnBytes.size > 80) {
+                Log.d("MusicDao", "Wallet: metadata too long for OP_RETURN (max 80 bytes)")
+                return false
+            }
+            val opReturnScript = ScriptBuilder.createOpReturnScript(opReturnBytes)
+            sendRequest.tx.addOutput(Coin.ZERO, opReturnScript)
+            Log.d("MusicDao", "Wallet: added OP_RETURN with metadata: $metadata")
+        }
 
         return try {
             app.wallet().sendCoins(sendRequest)

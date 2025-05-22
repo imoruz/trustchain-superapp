@@ -50,7 +50,8 @@ fun SharedDonateScreen(
                 return@launch
             }
 
-            val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value)
+            val dummyMetadata = "Liked:Radiohead,DaftPunk"
+            val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value, dummyMetadata)
             if (result) {
                 SnackbarHandler.displaySnackbar("Donation sent to shared wallet")
                 navController.popBackStack()
