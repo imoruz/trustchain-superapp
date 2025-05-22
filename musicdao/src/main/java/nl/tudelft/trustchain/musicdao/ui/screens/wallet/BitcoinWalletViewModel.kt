@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 import org.bitcoinj.core.Coin
 import org.bitcoinj.wallet.Wallet
 import javax.inject.Inject
-import nl.tudelft.trustchain.musicdao.core.networking.SharedWalletNsdManager
+import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletNsdManager
 
 
 @HiltViewModel

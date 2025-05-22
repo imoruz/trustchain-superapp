@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Button
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import nl.tudelft.trustchain.musicdao.ui.screens.profileMenu.CustomMenuItem
@@ -33,17 +34,8 @@ fun SharedDonateScreen(
     val amount = rememberSaveable { mutableStateOf("0.1") }
     val coroutine = rememberCoroutineScope()
 
-    // Start advertising as shared wallet
-    val publicKey by bitcoinWalletViewModel.publicKey.collectAsState()
-    LaunchedEffect(publicKey) {
-        if (!publicKey.isNullOrBlank()) {
-            bitcoinWalletViewModel.sharedWalletNsdManager.startAdvertisingSharedWallet(
-                walletAddress = publicKey!!,
-                deviceName = "MyPhoneSharedWallet"
-            )
-            Log.d("SharedWallet", "Started advertising shared wallet: $publicKey")
-        }
-    }
+    // Start Discovery to donate to shared wallet
+    val sharedWalletAddress by bitcoinWalletViewModel.sharedWalletAddress.collectAsState()
 
     fun send() {
         val confirmedBalance = bitcoinWalletViewModel.confirmedBalance.value
@@ -53,13 +45,12 @@ fun SharedDonateScreen(
         }
 
         coroutine.launch {
-            val sharedWalletAddress = bitcoinWalletViewModel.sharedWalletAddress.value
             if (sharedWalletAddress == null) {
                 SnackbarHandler.displaySnackbar("No shared wallet found on local network")
                 return@launch
             }
 
-            val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress, amount.value)
+            val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value)
             if (result) {
                 SnackbarHandler.displaySnackbar("Donation sent to shared wallet")
                 navController.popBackStack()
@@ -69,7 +60,14 @@ fun SharedDonateScreen(
         }
     }
 
+
     Column(modifier = Modifier.padding(20.dp)) {
+        Text(
+            text = "Shared wallet found: ${sharedWalletAddress ?: "Searching..."}",
+            modifier = Modifier.padding(bottom = 10.dp)
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = "Your balance is ${bitcoinWalletViewModel.confirmedBalance.value?.toFriendlyString() ?: "0.00 BTC"}",
             fontWeight = FontWeight.SemiBold,

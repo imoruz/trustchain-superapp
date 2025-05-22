@@ -1,4 +1,4 @@
-package nl.tudelft.trustchain.musicdao.core.networking
+package nl.tudelft.trustchain.musicdao.core.sharedwallet
 
 import android.content.Context
 import android.net.nsd.NsdManager
@@ -53,7 +53,7 @@ class SharedWalletNsdManager @Inject constructor(
     }
 
     //Starts advertising the shared wallet on the local network with a wallet address via NSD
-    fun startAdvertisingSharedWallet(walletAddress: String, deviceName: String = "HostDevice") {
+    fun startAdvertisingSharedWallet(walletAddress: String, deviceName: String = "UsedSharedWalletPhone") {
         if (_isAdvertising.value) {
             Log.d(TAG, "Already advertising.")
             return

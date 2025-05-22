@@ -20,16 +20,17 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import nl.tudelft.trustchain.musicdao.core.cache.CacheDatabase
 import nl.tudelft.trustchain.musicdao.core.cache.entities.AlbumEntity
-import nl.tudelft.trustchain.musicdao.core.repositories.AlbumRepository
-import nl.tudelft.trustchain.musicdao.core.repositories.model.Album
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreenViewModel
+import nl.tudelft.trustchain.musicdao.ui.screens.wallet.BitcoinWalletViewModel
+import nl.tudelft.trustchain.musicdao.ui.SnackbarHandler
 
 @ExperimentalMaterialApi
 @Composable
 fun Drawer(
     navController: NavController,
     profileScreenViewModel: MyProfileScreenViewModel,
-    database: CacheDatabase
+    database: CacheDatabase,
+    bitcoinWalletViewModel: BitcoinWalletViewModel,
 ) {
     val profile = profileScreenViewModel.profile.collectAsState()
     val peerAmount by profileScreenViewModel.peerAmount.observeAsState(0)
@@ -87,11 +88,20 @@ fun Drawer(
             }
         }
         Divider()
-            DropdownMenuItem(onClick = {
-                // Call advertising functionality here
-            }) {
-                Text("Become shared wallet")
+        DropdownMenuItem(onClick = {
+            val pubKey = bitcoinWalletViewModel.publicKey.value
+            if (!pubKey.isNullOrBlank()) {
+                bitcoinWalletViewModel.sharedWalletNsdManager.startAdvertisingSharedWallet(
+                    walletAddress = pubKey,
+                    deviceName = "UsedSharedWalletPhone"
+                )
+                SnackbarHandler.displaySnackbar("This device is now a shared wallet")
+            } else {
+                SnackbarHandler.displaySnackbar("Wallet not ready")
             }
+        }) {
+            Text("Become shared wallet")
+        }
         Divider()
         Column (modifier = Modifier.padding(top = 20.dp)){
             val downloadedCount = albumStatsState.value.count { it.isDownloaded }

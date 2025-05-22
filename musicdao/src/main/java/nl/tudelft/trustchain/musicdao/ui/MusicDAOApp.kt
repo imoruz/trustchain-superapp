@@ -26,6 +26,7 @@ import nl.tudelft.trustchain.musicdao.ui.styling.MusicDAOTheme
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import nl.tudelft.trustchain.musicdao.core.cache.CacheDatabase
 import nl.tudelft.trustchain.musicdao.ui.navigation.BottomNavigationBar
+import nl.tudelft.trustchain.musicdao.ui.screens.wallet.BitcoinWalletViewModel
 
 @ExperimentalAnimationApi
 @ExperimentalFoundationApi
@@ -38,6 +39,7 @@ fun MusicDAOApp(database: CacheDatabase) {
 
         val context = LocalContext.current
 
+        val bitcoinWalletViewModel: BitcoinWalletViewModel = hiltViewModel()
         val playerViewModel: PlayerViewModel =
             viewModel(factory = PlayerViewModel.provideFactory(context = context, database))
         val ownProfileViewScreenModel: MyProfileScreenViewModel = hiltViewModel()
@@ -62,7 +64,7 @@ fun MusicDAOApp(database: CacheDatabase) {
                     )
                 }
             },
-            drawerContent = { Drawer(navController, ownProfileViewScreenModel, database) },
+            drawerContent = { Drawer(navController, ownProfileViewScreenModel, database, bitcoinWalletViewModel) },
             content = { paddingValues ->
                 Column(modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())) {
                     Column(modifier = Modifier.weight(2f)) {
