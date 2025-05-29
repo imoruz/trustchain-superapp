@@ -16,6 +16,9 @@ import org.bitcoinj.core.Coin
 import org.bitcoinj.wallet.Wallet
 import javax.inject.Inject
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletNsdManager
+import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
+import nl.tudelft.trustchain.musicdao.util.getArtistListenStats
+import nl.tudelft.trustchain.musicdao.util.getArtistListenStatsForReceived
 
 
 @HiltViewModel
@@ -53,6 +56,21 @@ class BitcoinWalletViewModel
             }
         }
 
+        val myWalletAddress: String
+        get() = walletService.protocolAddress().toString()
+
+        private val _artistListenTable = MutableStateFlow<List<ArtistListen>>(emptyList())
+        val artistListenTable: StateFlow<List<ArtistListen>> get() = _artistListenTable
+
+        fun updateArtistListenTable() {
+            val myWalletAddress = walletService.protocolAddress().toString()
+            val listenMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
+            val artistListenTable = listenMap.map { (addr, count) -> ArtistListen(addr, count) }
+            _artistListenTable.value = artistListenTable
+//            val table = getArtistListenStats(walletService.wallet())
+//                .map { (addr, count) -> ArtistListen(addr, count) }
+//            _artistListenTable.value = table
+        }
         fun requestFaucet() {
             viewModelScope.launch {
                 faucetInProgress.value = true
