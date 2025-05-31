@@ -69,6 +69,14 @@ fun DaoListScreen(
                         navController.navigate(Screen.SharedDonate.route)
                     }
                 )
+
+                CustomMenuItem(
+                    text = "View Shared Wallet Balance",
+                    onClick = {
+                        navController.navigate(Screen.SharedWalletOverview.route)
+                    }
+                )
+
                 Spacer(modifier = Modifier.padding(2.dp))
                 Column {
                     Text(text = "Discovered ${daos.size} DAOs")

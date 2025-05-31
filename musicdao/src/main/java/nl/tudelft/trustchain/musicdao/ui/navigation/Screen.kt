@@ -37,6 +37,8 @@ sealed class Screen(val route: String) {
 
     }
 
+    object SharedWalletOverview : Screen("shared_wallet_overview")
+
     object DaoRoute : Screen("DaoRoute")
 
     object DaoDetailRoute : Screen("dao/{daoId}/detail") {

@@ -51,6 +51,7 @@ import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreenViewMode
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.ProfileScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.profileMenu.ProfileMenuScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.release.ReleaseScreenViewModel
+import nl.tudelft.trustchain.musicdao.ui.screens.sharedWallet.SharedWalletOverviewScreen
 
 @ExperimentalAnimationApi
 @ExperimentalFoundationApi
@@ -244,6 +245,9 @@ fun AppNavigation(
                     bitcoinWalletViewModel = hiltViewModel(),
                     navController = navController
                 )
+            }
+            composable(Screen.SharedWalletOverview.route) {
+                SharedWalletOverviewScreen(bitcoinWalletViewModel = hiltViewModel())
             }
         }
     )

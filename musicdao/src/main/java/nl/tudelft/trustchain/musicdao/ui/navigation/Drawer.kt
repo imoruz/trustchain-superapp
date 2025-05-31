@@ -91,10 +91,7 @@ fun Drawer(
         DropdownMenuItem(onClick = {
             val pubKey = bitcoinWalletViewModel.publicKey.value
             if (!pubKey.isNullOrBlank()) {
-                bitcoinWalletViewModel.sharedWalletNsdManager.startAdvertisingSharedWallet(
-                    walletAddress = pubKey,
-                    deviceName = "UsedSharedWalletPhone"
-                )
+                bitcoinWalletViewModel.sharedWalletCommunity.broadcastSharedWalletMessage(pubKey)
                 SnackbarHandler.displaySnackbar("This device is now a shared wallet")
             } else {
                 SnackbarHandler.displaySnackbar("Wallet not ready")
