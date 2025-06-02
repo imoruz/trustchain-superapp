@@ -49,6 +49,7 @@ constructor(
         viewModelScope.launch {
             while (isActive) {
                 try {
+                    // network error happens here (see Community class)
                     sharedWalletCommunity.broadcastToRandomPeer()
                     Log.d(TAG, "Broadcasted shared wallet presence")
                 } catch (e: Exception) {

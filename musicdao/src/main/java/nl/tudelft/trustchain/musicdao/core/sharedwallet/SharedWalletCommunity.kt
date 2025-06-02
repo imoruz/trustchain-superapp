@@ -35,6 +35,7 @@ class SharedWalletCommunity constructor(
     // Flag indicating if this device is a shared wallet
     private var isSharedWallet: Boolean = false
 
+    // i tried some stuff with myPeer (i commented out all the safeMyPeer stuff but no success as the error is happening upstream in the Community class))
     val safeMyPeer: Peer
         get() = requireNotNull(myPeer) { "myPeer is not initialized yet." }
 
