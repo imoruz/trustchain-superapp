@@ -28,17 +28,15 @@ object SharedWalletModule {
     @Provides
     @Singleton
     fun provideTrustChainStore(@ApplicationContext context: Context): TrustChainSQLiteStore {
-        val driver: SqlDriver = AndroidSqliteDriver(Database.Schema, context, "sharedwallet-trustchain.db")
+        val driver: SqlDriver =
+            AndroidSqliteDriver(Database.Schema, context, "sharedwallet-trustchain.db")
         val database = Database(driver)
         return TrustChainSQLiteStore(database)
     }
 
-    @Provides
-    @Singleton
-    fun provideSharedWalletCommunity(
-        settings: TrustChainSettings,
-        store: TrustChainSQLiteStore
-    ): SharedWalletCommunity {
-        return SharedWalletCommunity.Factory(settings, store).create()
-    }
+//    @Provides
+//    @Singleton
+//    fun provideSharedWalletCommunity(): SharedWalletCommunity {
+//        return IPv8Android.getInstance().getOverlay()!!
+//    }
 }

@@ -29,9 +29,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import nl.tudelft.ipv8.android.IPv8Android
 import nl.tudelft.trustchain.musicdao.core.coin.*
+import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
 import java.nio.file.Path
 import java.nio.file.Paths
 import javax.inject.Singleton
+import androidx.core.content.edit
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -109,6 +111,13 @@ class HiltModules {
 
     @Provides
     @Singleton
+    fun sharedWalletCommunity(): SharedWalletCommunity {
+        return IPv8Android.getInstance().getOverlay()
+            ?: throw IllegalStateException("DaoCommunity is not configured")
+    }
+
+    @Provides
+    @Singleton
     fun path(
         @ApplicationContext applicationContext: Context
     ): CachePath {
@@ -130,7 +139,7 @@ class HiltModules {
         @ApplicationContext applicationContext: Context,
         walletManager: WalletManager
     ): WalletService {
-        return WalletService(
+        val service = WalletService(
             WalletConfig(
                 networkParams = DEFAULT_NETWORK_PARAMS,
                 filePrefix = DEFAULT_FILE_PREFIX,
@@ -141,6 +150,14 @@ class HiltModules {
             ),
             walletManager.kit
         )
+        val sharedWalletId = service.protocolAddress().toString()
+        PreferenceManager.getDefaultSharedPreferences(applicationContext).edit() {
+            putString(
+                "sharedWalletId",
+                sharedWalletId
+            )
+        }
+        return service
     }
 
     @Provides

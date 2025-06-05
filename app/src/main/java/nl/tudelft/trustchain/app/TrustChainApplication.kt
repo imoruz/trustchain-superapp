@@ -332,14 +332,36 @@ class TrustChainApplication : Application() {
         )
     }
 
+//    private fun createSharedWalletCommunity(): OverlayConfiguration<SharedWalletCommunity> {
+//        val randomWalk = RandomWalk.Factory()
+//        val driver = AndroidSqliteDriver(Database.Schema, this, "music-private.db")
+//        val store = TrustChainSQLiteStore(Database(driver))
+//        val ownWalletId: String = walletService.protocolAddress().toString()
+//        return OverlayConfiguration(
+//            SharedWalletCommunity.Factory(TrustChainSettings(), store),
+//            listOf(randomWalk) // add discovery strategies as needed
+//        )
+//    }
     private fun createSharedWalletCommunity(): OverlayConfiguration<SharedWalletCommunity> {
-        val randomWalk = RandomWalk.Factory()
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val driver = AndroidSqliteDriver(Database.Schema, this, "music-private.db")
         val store = TrustChainSQLiteStore(Database(driver))
-        return OverlayConfiguration(
-            SharedWalletCommunity.Factory(TrustChainSettings(), store),
-            listOf(randomWalk) // add discovery strategies as needed
+        val savedId = prefs.getString("sharedWalletId", null)
+            ?: run {
+                // Not ready yet: return a “no-op” factory or throw, or use a placeholder.
+                Log.w("App", "SharedWallet ID not in prefs; overlay will not broadcast yet.")
+                return OverlayConfiguration(
+                    SharedWalletCommunity.Factory("UNDEFINED", TrustChainSettings(), store),
+                    listOf(RandomWalk.Factory())
+                )
+            }
+
+        val sharedFactory = SharedWalletCommunity.Factory(
+            savedId,
+            TrustChainSettings(),
+            store,
         )
+        return OverlayConfiguration(sharedFactory, listOf(RandomWalk.Factory()))
     }
 
 

@@ -49,7 +49,7 @@ fun SharedDonateScreen(
                 SnackbarHandler.displaySnackbar("No shared wallet found on local network")
                 return@launch
             }
-
+            Log.d("WalletSend", "in shared donate screen. wallet addr is: $sharedWalletAddress")
             val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value)
             if (result) {
                 SnackbarHandler.displaySnackbar("Donation sent to shared wallet")

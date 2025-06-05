@@ -1,7 +1,6 @@
 package nl.tudelft.trustchain.musicdao.core.sharedwallet
 
 import android.util.Log
-import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import nl.tudelft.ipv8.Overlay
@@ -13,18 +12,17 @@ import nl.tudelft.ipv8.attestation.trustchain.store.TrustChainStore
 import nl.tudelft.ipv8.keyvault.PublicKey
 import nl.tudelft.ipv8.keyvault.defaultCryptoProvider
 import nl.tudelft.ipv8.messaging.Packet
-import nl.tudelft.ipv8.messaging.payload.IntroductionRequestPayload
 import nl.tudelft.ipv8.util.hexToBytes
 import nl.tudelft.ipv8.util.toHex
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.messages.SharedWalletMessage
 
 import java.util.*
-import javax.inject.Inject
 
-class SharedWalletCommunity constructor(
+class SharedWalletCommunity(
+    private val myWalletId: String,
     settings: TrustChainSettings,
     database: TrustChainStore,
-    crawler: TrustChainCrawler = TrustChainCrawler()
+    crawler: TrustChainCrawler = TrustChainCrawler(),
 ) : TrustChainCommunity(settings, database, crawler) {
 
     private val seenMessages = LinkedHashSet<String>()
@@ -33,8 +31,7 @@ class SharedWalletCommunity constructor(
     override val serviceId = "aa6f5273ef7b8c9d0e1f2a3b4c5d6f7e8d9c0efa"
 
     // Flag indicating if this device is a shared wallet
-    private var isSharedWallet: Boolean = false
-
+    private var isSharedWallet: Boolean = true
     // i tried some stuff with myPeer (i commented out all the safeMyPeer stuff but no success as the error is happening upstream in the Community class))
     val safeMyPeer: Peer
         get() = requireNotNull(myPeer) { "myPeer is not initialized yet." }
@@ -42,13 +39,15 @@ class SharedWalletCommunity constructor(
     private val _discoveredWalletAddress = MutableStateFlow<String?>(null)
     val discoveredWalletAddress: StateFlow<String?> get() = _discoveredWalletAddress
 
+
     class Factory(
+        private val myWalletId: String,
         private val settings: TrustChainSettings,
         private val database: TrustChainStore,
         private val crawler: TrustChainCrawler = TrustChainCrawler()
     ) : Overlay.Factory<SharedWalletCommunity>(SharedWalletCommunity::class.java) {
         override fun create(): SharedWalletCommunity {
-            return SharedWalletCommunity(settings, database, crawler)
+            return SharedWalletCommunity(myWalletId, settings, database, crawler)
         }
     }
 
@@ -65,9 +64,12 @@ class SharedWalletCommunity constructor(
         )
 
         var count = 0
-        for ((index, peer) in getPeers().withIndex()) {
+        val peers = getPeers()
+        Log.d("WalletSend", "Broadcasting wallet message to peers: ${peers.map { it.key }.joinToString(", ")}")
+        for ((index, peer) in peers.withIndex()) {
             if (index >= MAX_BROADCAST_PEERS) break
             send(peer, packet)
+            Log.d("WalletSend", "Wallet message sent.")
             count++
         }
         return count
@@ -124,13 +126,14 @@ class SharedWalletCommunity constructor(
         }
     }
 
-
     fun broadcastToRandomPeer() {
+        Log.d("WalletDiscovery", "Trying to bc to random peer")
         val peer = pickRandomPeer() ?: return
-        val walletAddress = _discoveredWalletAddress.value ?: return
+        Log.d("WalletDiscovery", "Random peer is: $peer")
+        Log.d("WalletDiscovery", "I am peer: $myPeer")
         val packet = serializePacket(
             MessageId.SHARED_WALLET_MESSAGE,
-            SharedWalletMessage(safeMyPeer.publicKey.keyToBin(), 1u, walletAddress, isSharedWallet)
+            SharedWalletMessage(safeMyPeer.publicKey.keyToBin(), 1u, myWalletId, isSharedWallet)
         )
         send(peer, packet)
         Log.d("WalletDiscovery", "Sent wallet announcement to random peer ${peer.mid}")
