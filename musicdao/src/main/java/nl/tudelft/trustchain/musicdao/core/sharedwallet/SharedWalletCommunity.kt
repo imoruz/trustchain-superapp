@@ -27,6 +27,9 @@ class SharedWalletCommunity(
 
     private val seenMessages = LinkedHashSet<String>()
     private val MAX_SEEN_MESSAGES = 500
+    private val _currentPropagatedWalletId = MutableStateFlow<String?>(null)
+    val currentPropagatedWalletId: StateFlow<String?> get() = _currentPropagatedWalletId
+
 
     override val serviceId = "aa6f5273ef7b8c9d0e1f2a3b4c5d6f7e8d9c0efa"
 
@@ -58,9 +61,10 @@ class SharedWalletCommunity(
     fun broadcastSharedWalletMessage(walletId: String, ttl: UInt = 2u): Int {
 
         val originKey = safeMyPeer.publicKey.keyToBin()
+        val walletToBroadcast = _currentPropagatedWalletId.value ?: myWalletId
         val packet = serializePacket(
             MessageId.SHARED_WALLET_MESSAGE,
-            SharedWalletMessage(originKey, ttl, walletId, isSharedWallet)
+            SharedWalletMessage(originKey, ttl, walletToBroadcast, isSharedWallet)
         )
 
         var count = 0
@@ -97,7 +101,7 @@ class SharedWalletCommunity(
     private fun onSharedWalletMessage(packet: Packet) {
         val (peer, payload) = packet.getAuthPayload(SharedWalletMessage)
 
-        val messageId = payload.walletId.lowercase(Locale.ROOT) + ":" + payload.originPublicKey.toHex()
+        val messageId = payload.walletId + ":" + payload.originPublicKey.toHex()
         if (isDuplicateMessage(messageId)) {
             Log.i("WalletDiscovery", "Duplicate message ignored: $messageId")
             return
@@ -108,11 +112,12 @@ class SharedWalletCommunity(
             return
         }
 
-        val walletId = payload.walletId.lowercase(Locale.ROOT)
+        val walletId = payload.walletId
         Log.i("WalletDiscovery", "Received wallet ID: $walletId from shared wallet ${peer.mid}")
 
         if (_discoveredWalletAddress.value != walletId) {
             _discoveredWalletAddress.value = walletId
+            _currentPropagatedWalletId.value = walletId
             Log.i("WalletDiscovery", "Updated discovered wallet address to: $walletId")
         }
 
@@ -131,9 +136,10 @@ class SharedWalletCommunity(
         val peer = pickRandomPeer() ?: return
         Log.d("WalletDiscovery", "Random peer is: $peer")
         Log.d("WalletDiscovery", "I am peer: $myPeer")
+        val walletToBroadcast = _currentPropagatedWalletId.value ?: myWalletId
         val packet = serializePacket(
             MessageId.SHARED_WALLET_MESSAGE,
-            SharedWalletMessage(safeMyPeer.publicKey.keyToBin(), 1u, myWalletId, isSharedWallet)
+            SharedWalletMessage(safeMyPeer.publicKey.keyToBin(), 1u, walletToBroadcast, isSharedWallet)
         )
         send(peer, packet)
         Log.d("WalletDiscovery", "Sent wallet announcement to random peer ${peer.mid}")

@@ -43,7 +43,7 @@ class SharedWalletMessage(
             localOffset += walletIdSize
 
             val isSharedWallet = deserializeBool(buffer, offset + localOffset)
-            localOffset += SERIALIZED_BOOL_SIZE
+            localOffset += 1 //SERIALIZED_BOOL_SIZE = 1
 
             return Pair(
                 SharedWalletMessage(originPublicKey, ttl, walletId, isSharedWallet),
