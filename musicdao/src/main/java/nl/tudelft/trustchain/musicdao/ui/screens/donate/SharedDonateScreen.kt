@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import nl.tudelft.trustchain.musicdao.ui.screens.profileMenu.CustomMenuItem
 import androidx.compose.runtime.getValue
+import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListenTable
 
 
 @Composable
@@ -31,8 +32,16 @@ fun SharedDonateScreen(
     bitcoinWalletViewModel: BitcoinWalletViewModel,
     navController: NavController
 ) {
+    val artistListenTable by bitcoinWalletViewModel.artistListenTable.collectAsState()
+    LaunchedEffect(Unit) {
+        bitcoinWalletViewModel.updateArtistListenTable()
+    }
+
     val amount = rememberSaveable { mutableStateOf("0.1") }
     val coroutine = rememberCoroutineScope()
+
+    // Get your device's own wallet address from the ViewModel
+    val myWalletAddress = bitcoinWalletViewModel.myWalletAddress
 
     // Start Discovery to donate to shared wallet
     val sharedWalletAddress by bitcoinWalletViewModel.sharedWalletAddress.collectAsState()
@@ -49,8 +58,11 @@ fun SharedDonateScreen(
                 SnackbarHandler.displaySnackbar("No shared wallet found on local network")
                 return@launch
             }
+
             Log.d("WalletSend", "in shared donate screen. wallet addr is: $sharedWalletAddress")
-            val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value)
+            val dummyMetadata = "{\"a\":\"mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP\",\"n\":12}"
+            val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value, dummyMetadata)
+
             if (result) {
                 SnackbarHandler.displaySnackbar("Donation sent to shared wallet")
                 navController.popBackStack()
@@ -91,6 +103,13 @@ fun SharedDonateScreen(
                 ) { Text(value) }
             }
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+        val showTable = myWalletAddress == sharedWalletAddress
+        if (showTable) {
+            ArtistListenTable(artistListenTable)
+        }
+
         Spacer(modifier = Modifier.weight(1f))
         CustomMenuItem(text = "Confirm Send", onClick = { send() })
     }

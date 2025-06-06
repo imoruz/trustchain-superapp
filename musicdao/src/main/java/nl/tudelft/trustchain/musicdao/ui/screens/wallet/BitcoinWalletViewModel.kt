@@ -18,7 +18,9 @@ import org.bitcoinj.core.Coin
 import org.bitcoinj.wallet.Wallet
 import javax.inject.Inject
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
-
+import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
+import nl.tudelft.trustchain.musicdao.util.getArtistListenStats
+import nl.tudelft.trustchain.musicdao.util.getArtistListenStatsForReceived
 
 @HiltViewModel
 class BitcoinWalletViewModel
@@ -89,128 +91,56 @@ constructor(
         }
     }
 
-    /*suspend fun fetchSharedWalletBalance() {
-        val url = "${httpUrl.value}/balance"
+        val myWalletAddress: String
+        get() = walletService.protocolAddress().toString()
 
-        val request = Request.Builder()
-            .url(url)
-            .build()
+        private val _artistListenTable = MutableStateFlow<List<ArtistListen>>(emptyList())
+        val artistListenTable: StateFlow<List<ArtistListen>> get() = _artistListenTable
 
-        try {
-            val response = withContext(Dispatchers.IO) {
-                httpClient.newCall(request).execute()
-            }
-
-            response.use {
-                if (!it.isSuccessful) {
-                    Log.e(TAG, "Error fetching shared wallet balance from $url, e")
-                    return@use
-                }
-
-                val body = it.body?.string()
-                Log.i(TAG, "Raw response body from balance endpoint: $body")
-                if (body != null) {
-                    Log.i(TAG, "Contents balance: $body")
-                    val json = gson.fromJson(body, Map::class.java)
-                    val balanceStr = json["balance"] as? String
-                    sharedWalletBalance.value = parseCoinFromString(balanceStr)
-                    Log.d(TAG, "Fetched shared wallet balance: $balanceStr")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception fetching shared wallet balance from $url, ${e.message}")
+        fun updateArtistListenTable() {
+            val myWalletAddress = walletService.protocolAddress().toString()
+            val listenMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
+            val artistListenTable = listenMap.map { (addr, count) -> ArtistListen(addr, count) }
+            _artistListenTable.value = artistListenTable
+//            val table = getArtistListenStats(walletService.wallet())
+//                .map { (addr, count) -> ArtistListen(addr, count) }
+//            _artistListenTable.value = table
         }
-    }
-
-    suspend fun fetchSharedWalletTransactions() {
-        val url = "${httpUrl.value}/transactions"
-
-        val request = Request.Builder()
-            .url(url)
-            .build()
-
-        try {
-            val response = withContext(Dispatchers.IO) {
-                httpClient.newCall(request).execute()
-            }
-
-            response.use {
-                if (!it.isSuccessful) {
-                    Log.e(TAG, "Error fetching shared wallet transactions from $url, e")
-                    return
+        fun requestFaucet() {
+            viewModelScope.launch {
+                faucetInProgress.value = true
+                val faucetRequestResult = walletService.defaultFaucetRequest()
+                if (faucetRequestResult) {
+                    SnackbarHandler.displaySnackbar(text = "Successfully requested from faucet")
+                } else {
+                    SnackbarHandler.displaySnackbar(text = "Something went wrong requesting from faucet")
                 }
-
-                val body = it.body?.string()
-                Log.i(TAG, "Raw response body from balance endpoint: $body")
-
-                if (body != null) {
-                    Log.i(TAG, "Contents: $body")
-                    val mapType = object : TypeToken<Map<String, List<UserWalletTransaction>>>() {}.type
-                    val jsonMap: Map<String, List<UserWalletTransaction>> = gson.fromJson(body, mapType)
-                    val transactions = jsonMap["transactions"]
-                    if (transactions != null) {
-                        sharedWalletTransactions.value = transactions
-                    }
-                }
+                faucetInProgress.value = false
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception fetching shared wallet transactions from $url, ${e.message}")
         }
-    }
-*/
-    private fun parseCoinFromString(balanceStr: String?): Coin? {
-        return try {
-            if (balanceStr != null) {
-                // Remove non-breaking spaces and "BTC" suffix
-                val cleaned = balanceStr
-                    .replace('\u00A0', ' ')
-                    .replace("BTC", "", ignoreCase = true)
-                    .trim()
-                Coin.parseCoin(cleaned)
-            } else null
-        } catch (e: Exception) {
-            Log.e(TAG, "Error parsing balance string $balanceStr", e)
-            null
+
+        fun wallet(): Wallet {
+            return walletService.wallet()
         }
-    }
 
-
-
-    fun requestFaucet() {
-        viewModelScope.launch {
-            faucetInProgress.value = true
-            val faucetRequestResult = walletService.defaultFaucetRequest()
-            if (faucetRequestResult) {
-                SnackbarHandler.displaySnackbar(text = "Successfully requested from faucet")
-            } else {
-                SnackbarHandler.displaySnackbar(text = "Something went wrong requesting from faucet")
-            }
-            faucetInProgress.value = false
+        suspend fun donate(
+            publicKey: String,
+            amount: String
+        ): Boolean {
+            val bitcoinPublicKey = artistRepository.getArtist(publicKey)?.bitcoinAddress ?: return false
+            return walletService.sendCoins(bitcoinPublicKey, amount)
         }
-    }
 
-    fun wallet(): Wallet {
-        return walletService.wallet()
-    }
-
-    suspend fun donate(
-        publicKey: String,
-        amount: String
-    ): Boolean {
-        val bitcoinPublicKey = artistRepository.getArtist(publicKey)?.bitcoinAddress ?: return false
-        return walletService.sendCoins(bitcoinPublicKey, amount)
-    }
-
-    suspend fun donateToAddress(
-        address: String,
-        amount: String
-    ): Boolean {
-        return walletService.sendCoins(address, amount)
-    }
+        suspend fun donateToAddress(
+            address: String,
+            amount: String,
+            metadata: String? = null
+        ): Boolean {
+            return walletService.sendCoins(address, amount, metadata)
+        }
 
 
     companion object {
-        const val REFRESH_DELAY = 1000L
-        const val TAG = "MusicDaoWallet"
+            const val REFRESH_DELAY = 1000L
+        }
     }
-}
