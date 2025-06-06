@@ -1,4 +1,4 @@
-package nl.tudelft.trustchain.musicdao.util
+package nl.tudelft.trustchain.musicdao.core.util
 
 import org.bitcoinj.wallet.Wallet
 import org.json.JSONArray

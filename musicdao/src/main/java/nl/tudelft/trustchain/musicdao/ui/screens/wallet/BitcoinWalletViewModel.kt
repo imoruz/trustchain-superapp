@@ -19,8 +19,8 @@ import org.bitcoinj.wallet.Wallet
 import javax.inject.Inject
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
 import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
-import nl.tudelft.trustchain.musicdao.util.getArtistListenStats
-import nl.tudelft.trustchain.musicdao.util.getArtistListenStatsForReceived
+import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStats
+import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStatsForReceived
 
 @HiltViewModel
 class BitcoinWalletViewModel
@@ -142,5 +142,6 @@ constructor(
 
     companion object {
             const val REFRESH_DELAY = 1000L
+            const val TAG = "BitcoinWalletViewModel"
         }
     }
