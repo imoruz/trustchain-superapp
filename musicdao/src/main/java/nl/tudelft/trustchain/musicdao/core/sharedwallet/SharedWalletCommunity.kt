@@ -32,10 +32,14 @@ class SharedWalletCommunity(
 
 
     override val serviceId = "aa6f5273ef7b8c9d0e1f2a3b4c5d6f7e8d9c0efa"
+    private var lastReceivedWalletTimestamp: Long = 0
+
+    private val _sharedWalletInfoState = MutableStateFlow<SharedWalletInfoMessage?>(null)
+    val sharedWalletInfoState: StateFlow<SharedWalletInfoMessage?> get() = _sharedWalletInfoState
+
 
     // Flag indicating if this device is a shared wallet
-    private var isSharedWallet: Boolean = true
-    // i tried some stuff with myPeer (i commented out all the safeMyPeer stuff but no success as the error is happening upstream in the Community class))
+    var isSharedWallet: Boolean = false
     val safeMyPeer: Peer
         get() = requireNotNull(myPeer) { "myPeer is not initialized yet." }
 
@@ -58,13 +62,23 @@ class SharedWalletCommunity(
         messageHandlers[MessageId.SHARED_WALLET_MESSAGE] = ::onSharedWalletMessage
     }
 
-    fun broadcastSharedWalletMessage(walletId: String, ttl: UInt = 2u): Int {
+    fun becomeSharedWallet() {
+        isSharedWallet = true
+        _currentPropagatedWalletId.value = myWalletId
+        lastReceivedWalletTimestamp = System.currentTimeMillis()
+        _discoveredWalletAddress.value = myWalletId  // Ensure local discovery
+        broadcastSharedWalletMessage()
+        Log.i("WalletJoin", "This device became the shared wallet and set itself as discovered.")
+    }
+
+
+    fun broadcastSharedWalletMessage(ttl: UInt = 2u): Int {
 
         val originKey = safeMyPeer.publicKey.keyToBin()
         val walletToBroadcast = _currentPropagatedWalletId.value ?: myWalletId
         val packet = serializePacket(
             MessageId.SHARED_WALLET_MESSAGE,
-            SharedWalletMessage(originKey, ttl, walletToBroadcast, isSharedWallet)
+            SharedWalletMessage(originKey, ttl, walletToBroadcast, isSharedWallet, System.currentTimeMillis())
         )
 
         var count = 0
@@ -115,21 +129,39 @@ class SharedWalletCommunity(
         val walletId = payload.walletId
         Log.i("WalletDiscovery", "Received wallet ID: $walletId from shared wallet ${peer.mid}")
 
-        if (_discoveredWalletAddress.value != walletId) {
+        if (payload.timestamp > lastReceivedWalletTimestamp) {
+            lastReceivedWalletTimestamp = payload.timestamp
             _discoveredWalletAddress.value = walletId
             _currentPropagatedWalletId.value = walletId
-            Log.i("WalletDiscovery", "Updated discovered wallet address to: $walletId")
-        }
+            Log.i("WalletDiscovery", "Accepted newer wallet broadcast with timestamp=${payload.timestamp}")
 
-        if (hasLocalWallet(walletId)) {
-            Log.i("WalletDiscovery", "Already joined wallet $walletId")
-        } else {
-            joinWallet(walletId)
-            if (payload.checkTTL()) {
-                broadcastSharedWalletMessage(walletId, payload.ttl)
+            if (!hasLocalWallet(walletId)) {
+                joinWallet(walletId)
             }
+
+            if (payload.checkTTL()) {
+                broadcastSharedWalletMessage(payload.ttl)
+            }
+        } else {
+            Log.i("WalletDiscovery", "Ignored older wallet broadcast with timestamp=${payload.timestamp}")
         }
     }
+
+    private fun onSharedWalletInfoMessage(packet: Packet) {
+        val (peer, payload) = packet.getAuthPayload(SharedWalletInfoMessage)
+
+        val messageId = payload.walletId + ":" + payload.originPublicKey.toHex()
+        if (isDuplicateMessage(messageId)) {
+            Log.i("WalletInfo", "Duplicate info message ignored: $messageId")
+            return
+        }
+
+        // Notify listeners or update state flow here for new balance and transactions
+        _sharedWalletInfoState.value = payload
+
+        Log.i("WalletInfo", "Received wallet info for walletId=${payload.walletId} from peer=${peer.mid}")
+    }
+
 
     fun broadcastToRandomPeer() {
         Log.d("WalletDiscovery", "Trying to bc to random peer")
