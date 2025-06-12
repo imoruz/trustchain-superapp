@@ -16,11 +16,21 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.bitcoinj.core.Coin
 import org.bitcoinj.wallet.Wallet
+import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
 import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
-import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStats
+//import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStats
 import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStatsForReceived
+
+const val MIN_FEE_PER_KB = 25_000L // based off the function calculateEstimatedTransactionFee in package nl.tudelft.trustchain.currencyii.coin
+const val ESTIMATED_KB_PER_TX = 20L // rough estimate that worked for now, but unsure if correct
+
+
+
+// Simple enum in the same file:
+private enum class FeePriority { LOW, MEDIUM, HIGH }
 
 @HiltViewModel
 class BitcoinWalletViewModel
@@ -102,9 +112,6 @@ constructor(
             val listenMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
             val artistListenTable = listenMap.map { (addr, count) -> ArtistListen(addr, count) }
             _artistListenTable.value = artistListenTable
-//            val table = getArtistListenStats(walletService.wallet())
-//                .map { (addr, count) -> ArtistListen(addr, count) }
-//            _artistListenTable.value = table
         }
         fun requestFaucet() {
             viewModelScope.launch {
@@ -138,6 +145,85 @@ constructor(
         ): Boolean {
             return walletService.sendCoins(address, amount, metadata)
         }
+
+
+    fun distributeProportionally() {
+        viewModelScope.launch {
+            // current balance
+            val coin: Coin? = confirmedBalance.value
+            if (coin == null || coin.isZero) {
+                SnackbarHandler.displaySnackbar("No funds to distribute")
+                return@launch
+            }
+            val totalSat = coin.value
+
+            // artist-listens table
+            val table = _artistListenTable.value
+            if (table.isEmpty()) {
+                SnackbarHandler.displaySnackbar("No artists to distribute to")
+                return@launch
+            }
+
+            // Estimate per-tx fee
+            val feePerKB: Long = MIN_FEE_PER_KB
+            val txSizeKB = ESTIMATED_KB_PER_TX
+            val calculatedFeePerTx = (feePerKB * txSizeKB)
+
+
+            // Compute total fee reserve
+            val totalFeeSat = calculatedFeePerTx * table.size
+            if (totalSat <= totalFeeSat) {
+                SnackbarHandler.displaySnackbar("Not enough funds to cover fees $totalFeeSat sats")
+                return@launch
+            }
+
+            // Distributable sats
+            val distributableSat = totalSat - totalFeeSat
+
+            // Split distributable sats by listens
+            val totalListens = table.sumOf { it.listens }
+            var allocated = 0L
+            val payments = table.mapIndexed { idx, artistListen ->
+                val rawShare = (distributableSat * artistListen.listens) / totalListens
+                allocated += rawShare
+
+                // Give any leftover sats to the last artist
+                val finalShare = if (idx == table.lastIndex) {
+                    rawShare + (distributableSat - allocated)
+                } else rawShare
+
+                artistListen.address to finalShare
+            }
+
+            // Send each payment (each will incur ~feePerTxSat sats in addition)
+            var allSucceeded = true
+            payments.forEach { (addr, shareSat) ->
+                val shareCoin = Coin.valueOf(shareSat)
+                val shareBtc  = shareCoin.toPlainString()
+                val ok = donateToAddress(
+                    address  = addr,
+                    amount   = shareBtc,
+                    metadata = """{"payment-mode":"PRO-RATA"}"""
+                )
+                if (!ok) {
+                    Log.e(TAG, "Failed to send $shareBtc BTC to $addr")
+                    allSucceeded = false
+                }
+            }
+
+            // 8️⃣ Final user feedback
+            val distributedBtc = BigDecimal(distributableSat)
+                .divide(BigDecimal(100_000_000), 8, RoundingMode.HALF_UP)
+                .toPlainString()
+
+            if (allSucceeded) {
+                SnackbarHandler.displaySnackbar("Distributed $distributedBtc BTC (fees reserved)")
+            } else {
+                SnackbarHandler.displaySnackbar("Some payments failed—check logs.")
+            }
+        }
+    }
+
 
 
     companion object {
