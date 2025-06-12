@@ -34,9 +34,6 @@ class SharedWalletCommunity(
     override val serviceId = "aa6f5273ef7b8c9d0e1f2a3b4c5d6f7e8d9c0efa"
     private var lastReceivedWalletTimestamp: Long = 0
 
-    private val _sharedWalletInfoState = MutableStateFlow<SharedWalletInfoMessage?>(null)
-    val sharedWalletInfoState: StateFlow<SharedWalletInfoMessage?> get() = _sharedWalletInfoState
-
 
     // Flag indicating if this device is a shared wallet
     var isSharedWallet: Boolean = false
@@ -145,21 +142,6 @@ class SharedWalletCommunity(
         } else {
             Log.i("WalletDiscovery", "Ignored older wallet broadcast with timestamp=${payload.timestamp}")
         }
-    }
-
-    private fun onSharedWalletInfoMessage(packet: Packet) {
-        val (peer, payload) = packet.getAuthPayload(SharedWalletInfoMessage)
-
-        val messageId = payload.walletId + ":" + payload.originPublicKey.toHex()
-        if (isDuplicateMessage(messageId)) {
-            Log.i("WalletInfo", "Duplicate info message ignored: $messageId")
-            return
-        }
-
-        // Notify listeners or update state flow here for new balance and transactions
-        _sharedWalletInfoState.value = payload
-
-        Log.i("WalletInfo", "Received wallet info for walletId=${payload.walletId} from peer=${peer.mid}")
     }
 
 
