@@ -10,14 +10,16 @@ class SharedWalletMessage(
     val originPublicKey: ByteArray,
     var ttl: UInt,
     val walletId: String,
-    val isSharedWallet: Boolean
+    val isSharedWallet: Boolean,
+    val timestamp: Long = System.currentTimeMillis()
 ) : Serializable {
 
     override fun serialize(): ByteArray {
         return originPublicKey +
             serializeUInt(ttl) +
             serializeVarLen(walletId.toByteArray(StandardCharsets.US_ASCII)) +
-            serializeBool(isSharedWallet)
+            serializeBool(isSharedWallet) +
+            serializeULong(timestamp.toULong())
     }
 
     fun checkTTL(): Boolean {
@@ -43,10 +45,17 @@ class SharedWalletMessage(
             localOffset += walletIdSize
 
             val isSharedWallet = deserializeBool(buffer, offset + localOffset)
-            localOffset += 1 //SERIALIZED_BOOL_SIZE = 1
+            localOffset += 1 // SERIALIZED_BOOL_SIZE
+
+            val timestamp = if (buffer.size >= offset + localOffset + SERIALIZED_ULONG_SIZE) {
+                deserializeULong(buffer, offset + localOffset).toLong()
+            } else {
+                0L // default timestamp for older messages
+            }
+            localOffset += if (buffer.size >= offset + localOffset + SERIALIZED_ULONG_SIZE) SERIALIZED_ULONG_SIZE else 0
 
             return Pair(
-                SharedWalletMessage(originPublicKey, ttl, walletId, isSharedWallet),
+                SharedWalletMessage(originPublicKey, ttl, walletId, isSharedWallet, timestamp),
                 localOffset
             )
         }
