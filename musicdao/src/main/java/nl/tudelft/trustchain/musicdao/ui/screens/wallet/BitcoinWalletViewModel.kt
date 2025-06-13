@@ -3,7 +3,6 @@ package nl.tudelft.trustchain.musicdao.ui.screens.wallet
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.gson.Gson
 import nl.tudelft.trustchain.musicdao.core.repositories.ArtistRepository
 import nl.tudelft.trustchain.musicdao.core.wallet.UserWalletTransaction
 import nl.tudelft.trustchain.musicdao.core.wallet.WalletService
@@ -12,15 +11,21 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.bitcoinj.core.Coin
 import org.bitcoinj.wallet.Wallet
 import javax.inject.Inject
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
+import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
 import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
-import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStats
 import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStatsForReceived
+import nl.tudelft.trustchain.musicdao.core.wallet.toTransactionInfo
+import org.bitcoinj.core.Sha256Hash
+import org.bitcoinj.core.Transaction
+import java.util.Date
+
 
 @HiltViewModel
 class BitcoinWalletViewModel
@@ -37,10 +42,12 @@ constructor(
     val syncProgress: MutableStateFlow<Int?> = MutableStateFlow(null)
     val walletTransactions: MutableStateFlow<List<UserWalletTransaction>> =
         MutableStateFlow(listOf())
-    val sharedWalletBalance: MutableStateFlow<Coin?> = MutableStateFlow(null)
-    val sharedWalletTransactions: MutableStateFlow<List<UserWalletTransaction>> =
-        MutableStateFlow(listOf())
-    private val gson = Gson()
+    private val _sharedWalletBalance = MutableStateFlow<Coin?>(null)
+    val sharedWalletBalance: StateFlow<Coin?> get() = _sharedWalletBalance
+
+    private val _sharedWalletTransactions = MutableStateFlow<List<TransactionInfo>>(emptyList())
+    val sharedWalletTransactions: StateFlow<List<TransactionInfo>> get() = _sharedWalletTransactions
+
 
 
     val faucetInProgress: MutableStateFlow<Boolean> = MutableStateFlow(false)
@@ -51,7 +58,6 @@ constructor(
         viewModelScope.launch {
             while (isActive) {
                 try {
-                    // network error happens here (see Community class)
                     sharedWalletCommunity.broadcastToRandomPeer()
                     Log.d(TAG, "Broadcasted shared wallet presence")
                 } catch (e: Exception) {
@@ -61,18 +67,32 @@ constructor(
             }
         }
 
-        /*viewModelScope.launch {
-            while (isActive) {
-                val sharedAddress = sharedWalletAddress.value
-                if (!sharedAddress.isNullOrEmpty()) {
-                    fetchSharedWalletBalance()
-                    fetchSharedWalletTransactions()
-                    Log.d(TAG, "Setting sharedWalletBalance to: ${sharedWalletBalance.value}")
-                    Log.d(TAG, "Setting sharedWalletTransactions to: ${sharedWalletTransactions.value.size} items")
+        viewModelScope.launch {
+            sharedWalletCommunity.sharedWalletInfoState.collect { info ->
+                if (info != null && !sharedWalletCommunity.isSharedWallet) {
+                    // Only update if this device is NOT the shared wallet
+                    _sharedWalletBalance.value = Coin.valueOf(info.balanceSatoshi)
+                    _sharedWalletTransactions.value = info.transactions
+                    Log.d(TAG, "Updated shared wallet balance and transactions from received info ${_sharedWalletBalance}, ${_sharedWalletTransactions}")
                 }
-                delay(10*REFRESH_DELAY)
             }
-        }*/
+        }
+
+        viewModelScope.launch {
+            sharedWalletBalance
+                .onEach { newBalance ->
+                    if (newBalance != null && sharedWalletCommunity.isSharedWallet) {
+                        val walletId = sharedWalletCommunity.discoveredWalletAddress.value ?: return@onEach
+                        val balanceSatoshi = newBalance.value
+                        val txInfos = sharedWalletTransactions.value
+
+                        sharedWalletCommunity.broadcastSharedWalletInfo(walletId, balanceSatoshi, txInfos)
+                        Log.d(TAG, "Broadcasted shared wallet balance and transactions")
+                    }
+                }
+        }
+
+
         viewModelScope.launch {
 
             while (isActive) {
@@ -141,7 +161,7 @@ constructor(
 
 
     companion object {
-            const val REFRESH_DELAY = 1000L
-            const val TAG = "BitcoinWalletViewModel"
-        }
+        const val REFRESH_DELAY = 1000L
+        const val TAG = "BitcoinWalletViewModel"
     }
+}

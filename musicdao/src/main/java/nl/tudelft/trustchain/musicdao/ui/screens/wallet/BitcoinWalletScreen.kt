@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import org.bitcoinj.script.ScriptOpCodes
 import android.util.Log
+import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
 
 
 fun extractOpReturnData(userWalletTransaction: UserWalletTransaction): List<ByteArray> {
@@ -278,6 +279,46 @@ fun TransactionItem(userWalletTransaction: UserWalletTransaction) {
         }
     )
 }
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun TransactionInfoItem(transactionInfo: TransactionInfo) {
+    val date = Date(transactionInfo.timestamp)
+    val isPositive = transactionInfo.valueSatoshi > 0
+
+    ListItem(
+        icon = {
+            Icon(
+                imageVector = if (isPositive) Icons.Outlined.ArrowForward else Icons.Outlined.ArrowBack,
+                contentDescription = null
+            )
+        },
+        overlineText = {
+            Text(
+                text = dateToString(date),
+                style = MaterialTheme.typography.caption
+            )
+        },
+        text = {
+            Text(text = if (isPositive) "Received" else "Sent")
+        },
+        secondaryText = {
+            Text(text = transactionInfo.txid.toString())
+        },
+        trailing = {
+            Text(
+                text = formatSatoshiToBTC(transactionInfo.valueSatoshi),
+                style = TextStyle(color = if (isPositive) Color.Green else Color.Red)
+            )
+        }
+    )
+}
+
+fun formatSatoshiToBTC(satoshi: Long): String {
+    val btcValue = satoshi.toDouble() / 100_000_000
+    return String.format(Locale.US, "%.8f BTC", btcValue)
+}
+
 
 fun dateToString(date: Date): String {
     val formatter = SimpleDateFormat("dd MMMM, yyyy, HH:mm", Locale.US)

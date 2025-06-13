@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
 import org.bitcoinj.core.Address
 import org.bitcoinj.core.Coin
 import org.bitcoinj.core.Transaction
@@ -201,6 +202,14 @@ class WalletService(val config: WalletConfig, private val app: WalletAppKit) {
         }
     }
 
+    fun createWatchingWallet(address: String): Wallet {
+        val params = wallet().params
+        val watchAddress = Address.fromString(params, address)
+        val watchOnlyWallet = Wallet(params)
+        watchOnlyWallet.addWatchedAddress(watchAddress)
+        return watchOnlyWallet
+    }
+
     companion object {
         val SATS_PER_BITCOIN = BigDecimal(100_000_000)
     }
@@ -211,3 +220,12 @@ data class UserWalletTransaction(
     val value: Coin,
     val date: Date
 )
+
+fun UserWalletTransaction.toTransactionInfo(): TransactionInfo {
+    return TransactionInfo(
+        txid = transaction.txId,
+        valueSatoshi = value.value,
+        timestamp = date.time
+    )
+}
+
