@@ -54,11 +54,18 @@ android {
 
     testOptions {
         unitTests.returnDefaultValues = true
+        unitTests.includeAndroidResources = true
     }
 
     packagingOptions {
         resources {
             excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/license.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt', 'META-INF/notice.txt', 'META-INF/ASL2.0', 'META-INF/*.kotlin_module']
+        }
+    }
+
+    sourceSets {
+        test {
+            kotlin.srcDirs = ['src/test/kotlin']
         }
     }
 
@@ -122,6 +129,20 @@ dependencies {
     // Room
     api "androidx.room:room-runtime:$room_version"
     implementation("androidx.room:room-ktx:$room_version")
+    testImplementation 'junit:junit:4.13.2'
+
+    // Mockito for mocking objects in tests (src/test/* and src/androidTest/*)
+    testImplementation "org.mockito:mockito-core:5.3.1"
+    testImplementation "org.mockito.kotlin:mockito-kotlin:5.1.0" // Kotlin-friendly extensions for Mockito
+
+    // For instrumented tests (src/androidTest/*), if you need Mockito there too
+    androidTestImplementation "org.mockito:mockito-android:5.3.1" // Special Android version for instrumented tests
+    androidTestImplementation "org.mockito.kotlin:mockito-kotlin:5.1.0" // Can be used here too
+
+    // If your SharedWalletCommunity or its dependencies use kotlinx.coroutines
+    // Make sure the version aligns with your project's coroutines version
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1"
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
     annotationProcessor "androidx.room:room-compiler:$room_version"
     kapt("androidx.room:room-compiler:$room_version")
 
