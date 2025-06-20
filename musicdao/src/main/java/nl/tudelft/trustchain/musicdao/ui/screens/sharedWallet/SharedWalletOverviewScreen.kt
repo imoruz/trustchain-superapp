@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import nl.tudelft.trustchain.musicdao.ui.components.EmptyState
 import nl.tudelft.trustchain.musicdao.ui.components.EmptyStateNotScrollable
 import nl.tudelft.trustchain.musicdao.ui.screens.wallet.BitcoinWalletViewModel
+import nl.tudelft.trustchain.musicdao.ui.screens.wallet.TransactionInfoItem
 import nl.tudelft.trustchain.musicdao.ui.screens.wallet.TransactionItem
 import org.bitcoinj.core.Coin
 
@@ -67,8 +68,8 @@ fun SharedWalletOverviewScreen(bitcoinWalletViewModel: BitcoinWalletViewModel) {
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         } else {
-            sharedWalletTransactions.map {
-                TransactionItem(userWalletTransaction = it)
+            sharedWalletTransactions.forEach {
+                TransactionInfoItem(transactionInfo = it)
             }
         }
     }

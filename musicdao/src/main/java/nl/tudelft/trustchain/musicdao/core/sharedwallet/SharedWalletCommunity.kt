@@ -28,12 +28,13 @@ class SharedWalletCommunity(
     private val seenMessages = LinkedHashSet<String>()
     private val MAX_SEEN_MESSAGES = 500
     private val _currentPropagatedWalletId = MutableStateFlow<String?>(null)
-    val currentPropagatedWalletId: StateFlow<String?> get() = _currentPropagatedWalletId
 
 
     override val serviceId = "aa6f5273ef7b8c9d0e1f2a3b4c5d6f7e8d9c0efa"
     private var lastReceivedWalletTimestamp: Long = 0
 
+    private val _sharedWalletInfoState = MutableStateFlow<SharedWalletInfoMessage?>(null)
+    val sharedWalletInfoState: StateFlow<SharedWalletInfoMessage?> get() = _sharedWalletInfoState
 
     // Flag indicating if this device is a shared wallet
     var isSharedWallet: Boolean = false
@@ -57,6 +58,7 @@ class SharedWalletCommunity(
 
     init {
         messageHandlers[MessageId.SHARED_WALLET_MESSAGE] = ::onSharedWalletMessage
+        messageHandlers[MessageId.SHARED_WALLET_INFO_MESSAGE] = ::onSharedWalletInfoMessage
     }
 
     fun becomeSharedWallet() {
@@ -67,7 +69,6 @@ class SharedWalletCommunity(
         broadcastSharedWalletMessage()
         Log.i("WalletJoin", "This device became the shared wallet and set itself as discovered.")
     }
-
 
     fun broadcastSharedWalletMessage(ttl: UInt = 2u): Int {
 
@@ -90,6 +91,29 @@ class SharedWalletCommunity(
         return count
     }
 
+    fun broadcastSharedWalletInfo(
+        walletId: String,
+        balanceSatoshi: Long,
+        transactions: List<TransactionInfo>,
+        ttl: UInt = 2u
+    ): Int {
+        val originKey = safeMyPeer.publicKey.keyToBin()
+        val infoMessage = SharedWalletInfoMessage(originKey, ttl, walletId, balanceSatoshi, transactions)
+        val packet = serializePacket(MessageId.SHARED_WALLET_INFO_MESSAGE, infoMessage)
+
+        var count = 0
+        val peers = getPeers()
+        Log.d("WalletInfoSend", "Broadcasting wallet info to peers: ${peers.map { it.key }.joinToString(", ")}")
+        for ((index, peer) in peers.withIndex()) {
+            if (index >= MAX_BROADCAST_PEERS) break
+            send(peer, packet)
+            Log.d("WalletInfoSend", "Wallet info message sent to peer ${peer.mid}")
+            count++
+        }
+        return count
+    }
+
+
     private fun isDuplicateMessage(messageId: String): Boolean {
         synchronized(seenMessages) {
             if (seenMessages.contains(messageId)) {
@@ -111,8 +135,8 @@ class SharedWalletCommunity(
 
     private fun onSharedWalletMessage(packet: Packet) {
         val (peer, payload) = packet.getAuthPayload(SharedWalletMessage)
-
         val messageId = payload.walletId + ":" + payload.originPublicKey.toHex()
+
         if (isDuplicateMessage(messageId)) {
             Log.i("WalletDiscovery", "Duplicate message ignored: $messageId")
             return
@@ -142,6 +166,21 @@ class SharedWalletCommunity(
         } else {
             Log.i("WalletDiscovery", "Ignored older wallet broadcast with timestamp=${payload.timestamp}")
         }
+    }
+
+    private fun onSharedWalletInfoMessage(packet: Packet) {
+        val (peer, payload) = packet.getAuthPayload(SharedWalletInfoMessage)
+
+        val messageId = payload.walletId + ":" + payload.originPublicKey.toHex()
+        if (isDuplicateMessage(messageId)) {
+            Log.i("WalletInfo", "Duplicate info message ignored: $messageId")
+            return
+        }
+
+        // Notify listeners or update state flow here for new balance and transactions
+        _sharedWalletInfoState.value = payload
+
+        Log.i("WalletInfo", "Received wallet info for walletId=${payload.walletId} from peer=${peer.mid}")
     }
 
 
@@ -191,6 +230,8 @@ class SharedWalletCommunity(
 
     object MessageId {
         const val SHARED_WALLET_MESSAGE = 20
+        const val SHARED_WALLET_INFO_MESSAGE = 21
+
     }
 }
 
