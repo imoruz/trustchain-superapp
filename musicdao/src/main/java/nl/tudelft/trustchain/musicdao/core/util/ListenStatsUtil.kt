@@ -12,11 +12,17 @@ import java.util.*
  *
  * Returns a map of artist bitcoin addresses to total listen counts.
  */
+
+data class ListenStats(
+    var totalCount: Int = 0,
+    val userCounts: MutableMap<String, Int> = mutableMapOf()
+)
+
 fun getArtistListenStatsForReceived(
     wallet: Wallet,
     myWalletAddress: String,
     daysBack: Int = 30
-): Map<String, Int> {
+): Map<String, ListenStats> {
     val calendar = Calendar.getInstance()
     calendar.add(Calendar.DAY_OF_YEAR, -daysBack)
     val cutoff30 = calendar.time
@@ -33,7 +39,7 @@ fun getArtistListenStatsForReceived(
                     try {
                         JSONObject(String(data, Charsets.UTF_8))
                             .optString("payment-mode")
-                            .equals("PRO-RATA", ignoreCase = true)
+                            .equals("PRO-RATA", ignoreCase = true) //TODO: make it for USER_CENTRIC TOO
                     } catch (e: Exception) {
                         false
                     }
@@ -45,7 +51,7 @@ fun getArtistListenStatsForReceived(
     // Final cutoff is whichever is later
     val cutoff = listOfNotNull(cutoff30, lastProRataDate).maxOrNull()!!
 
-    val artistListenCounts = mutableMapOf<String, Int>()
+    val artistStatsMap = mutableMapOf<String, ListenStats>()
 
     // Scan only received transactions after that cutoff
     wallet.walletTransactions.forEach { tx ->
@@ -78,7 +84,11 @@ fun getArtistListenStatsForReceived(
                     if (json.has("a") && json.has("n")) {
                         val artist = json.getString("a")
                         val count  = json.getInt("n")
-                        artistListenCounts[artist] = artistListenCounts.getOrDefault(artist, 0) + count
+                        val user = json.getString("u")
+                        val userCount = json.getInt("un")
+                        val stats = artistStatsMap.getOrPut(artist) { ListenStats() }
+                        stats.totalCount += count
+                        stats.userCounts[user] = stats.userCounts.getOrDefault(user, 0) + userCount
                     }
                 }
             }.onFailure {
@@ -86,10 +96,15 @@ fun getArtistListenStatsForReceived(
                     JSONArray(jsonString).let { arr ->
                         for (i in 0 until arr.length()) {
                             val item = arr.getJSONObject(i)
-                            if (item.has("a") && item.has("n")) {
+                            if (item.has("a") && item.has("n") && item.has("u") && item.has("ue")) {
                                 val artist = item.getString("a")
                                 val count  = item.getInt("n")
-                                artistListenCounts[artist] = artistListenCounts.getOrDefault(artist, 0) + count
+                                val user = item.getString("u")
+                                val userCount = item.getInt("un")
+                                val stats = artistStatsMap.getOrPut(artist) { ListenStats() }
+                                stats.totalCount += count
+                                stats.userCounts[user] = stats.userCounts.getOrDefault(user, 0) + userCount
+
                             }
                         }
                     }
@@ -98,5 +113,5 @@ fun getArtistListenStatsForReceived(
         }
     }
 
-    return artistListenCounts
+    return artistStatsMap
 }
