@@ -42,14 +42,15 @@ class DownloadFinishUseCase(
                     } ?: listOf()
 
                 val cover = FileProcessor.getCoverArt(root)
-                val updatedAlbumEntity =
-                    albumEntity.copy(
-                        songs = songs,
-                        cover = cover?.absolutePath,
-                        root = root.toString(),
-                        isDownloaded = true,
-                        torrentPath = Paths.get("${cachePath.getPath()}/torrents/$infoHash.torrent").toString()
-                    )
+                val isFullyDownloaded = songs.isNotEmpty() && songs.all { it.file.isNotBlank() }
+
+                val updatedAlbumEntity = albumEntity.copy(
+                    songs = songs,
+                    cover = cover?.absolutePath,
+                    root = root.toString(),
+                    isDownloaded = isFullyDownloaded,
+                    torrentPath = Paths.get("${cachePath.getPath()}/torrents/$infoHash.torrent").toString()
+                )
 
                 Log.d("MusicDao", "DownloadFinishUseCase: updated album with $updatedAlbumEntity")
                 database.dao.update(updatedAlbumEntity)

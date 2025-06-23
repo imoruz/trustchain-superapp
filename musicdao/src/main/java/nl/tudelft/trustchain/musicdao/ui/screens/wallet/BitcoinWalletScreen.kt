@@ -21,6 +21,35 @@ import nl.tudelft.trustchain.musicdao.ui.components.EmptyStateNotScrollable
 import nl.tudelft.trustchain.musicdao.ui.screens.profileMenu.CustomMenuItem
 import java.text.SimpleDateFormat
 import java.util.*
+import org.bitcoinj.script.ScriptOpCodes
+import android.util.Log
+import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
+
+
+fun extractOpReturnData(userWalletTransaction: UserWalletTransaction): List<ByteArray> {
+    val tx = userWalletTransaction.transaction
+    val opReturnData = mutableListOf<ByteArray>()
+
+    for (output in tx.outputs) {
+        val script = output.scriptPubKey
+        val chunks = script.chunks
+
+        // Check if first opcode is OP_RETURN
+        if (chunks.isNotEmpty() && chunks[0].opcode == ScriptOpCodes.OP_RETURN) {
+            // OP_RETURN data is usually in the next chunk(s)
+            // Gather all data chunks after OP_RETURN
+            val dataChunks = chunks.drop(1)
+                .filter { it.data != null }
+                .map { it.data!! }
+
+            dataChunks.forEach {
+                opReturnData.add(it)
+
+            }
+        }
+    }
+    return opReturnData
+}
 
 @Composable
 fun BitcoinWalletScreen(bitcoinWalletViewModel: BitcoinWalletViewModel) {
@@ -173,6 +202,20 @@ fun BitcoinWalletScreen(bitcoinWalletViewModel: BitcoinWalletViewModel) {
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun TransactionItem(userWalletTransaction: UserWalletTransaction) {
+
+    val opReturnData = extractOpReturnData(userWalletTransaction)
+    Log.d("TransactionItem", "Extracted ${opReturnData.size} OP_RETURN data chunks")
+    val opReturnStrings = opReturnData.mapIndexed { index, bytes ->
+        try {
+            val str = bytes.toString(Charsets.UTF_8)
+            Log.d("TransactionItem", "OP_RETURN chunk #$index: $str")
+            str
+        } catch (e: Exception) {
+            Log.e("TransactionItem", "Failed to decode OP_RETURN chunk #$index", e)
+            "<unreadable data>"
+        }
+    }
+
     ListItem(
         icon = {
             Icon(
@@ -201,7 +244,24 @@ fun TransactionItem(userWalletTransaction: UserWalletTransaction) {
             Text(text = text)
         },
         secondaryText = {
-            Text(text = userWalletTransaction.transaction.txId.toString())
+            Column {
+                Text(text = userWalletTransaction.transaction.txId.toString())
+                if (opReturnStrings.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "OP_RETURN Data:",
+                        style = MaterialTheme.typography.caption.copy(fontWeight = FontWeight.Bold)
+                    )
+                    opReturnStrings.forEach { dataStr ->
+                        Text(
+                            text = dataStr,
+                            style = MaterialTheme.typography.body2,
+                            maxLines = 3,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
         },
         trailing = {
             Text(
@@ -219,6 +279,46 @@ fun TransactionItem(userWalletTransaction: UserWalletTransaction) {
         }
     )
 }
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun TransactionInfoItem(transactionInfo: TransactionInfo) {
+    val date = Date(transactionInfo.timestamp)
+    val isPositive = transactionInfo.valueSatoshi > 0
+
+    ListItem(
+        icon = {
+            Icon(
+                imageVector = if (isPositive) Icons.Outlined.ArrowForward else Icons.Outlined.ArrowBack,
+                contentDescription = null
+            )
+        },
+        overlineText = {
+            Text(
+                text = dateToString(date),
+                style = MaterialTheme.typography.caption
+            )
+        },
+        text = {
+            Text(text = if (isPositive) "Received" else "Sent")
+        },
+        secondaryText = {
+            Text(text = transactionInfo.txid.toString())
+        },
+        trailing = {
+            Text(
+                text = formatSatoshiToBTC(transactionInfo.valueSatoshi),
+                style = TextStyle(color = if (isPositive) Color.Green else Color.Red)
+            )
+        }
+    )
+}
+
+fun formatSatoshiToBTC(satoshi: Long): String {
+    val btcValue = satoshi.toDouble() / 100_000_000
+    return String.format(Locale.US, "%.8f BTC", btcValue)
+}
+
 
 fun dateToString(date: Date): String {
     val formatter = SimpleDateFormat("dd MMMM, yyyy, HH:mm", Locale.US)

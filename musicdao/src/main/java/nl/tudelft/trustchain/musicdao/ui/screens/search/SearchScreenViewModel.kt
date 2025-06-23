@@ -59,15 +59,14 @@ class SearchScreenViewModel
         }
 
         fun downloadedFirstInListOfAlbums(list: List<Album>): List<Album> {
-            // put downloaded albums first
-            val downloadedAlbums =
-                list.sortedBy { album ->
-                    album.songs != null && album.songs.isNotEmpty()
-                }.reversed()
+            val downloadedAlbums = list.sortedByDescending { album ->
+                album.songs.orEmpty().any { song -> song.file?.exists() == true }
+            }
             return downloadedAlbums
         }
 
-        private suspend fun search(searchText: String) {
+
+    private suspend fun search(searchText: String) {
             if (searchText.isEmpty()) {
                 _searchResult.value = downloadedFirstInListOfAlbums(albumRepository.getAlbums())
             } else {

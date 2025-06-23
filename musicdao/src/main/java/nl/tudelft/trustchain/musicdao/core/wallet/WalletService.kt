@@ -4,11 +4,13 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
 import org.bitcoinj.core.Address
 import org.bitcoinj.core.Coin
 import org.bitcoinj.core.Transaction
 import org.bitcoinj.core.listeners.DownloadProgressTracker
 import org.bitcoinj.kits.WalletAppKit
+import org.bitcoinj.script.ScriptBuilder
 import org.bitcoinj.wallet.SendRequest
 import org.bitcoinj.wallet.Wallet
 import java.io.IOException
@@ -68,36 +70,48 @@ class WalletService(val config: WalletConfig, private val app: WalletAppKit) {
      */
     fun sendCoins(
         publicKey: String,
-        coinsAmount: String
+        coinsAmount: String,
+        metadata: String? = null
     ): Boolean {
-        Log.d("MusicDao", "Wallet (1): sending $coinsAmount to $publicKey")
+        Log.d("WalletSend", "Wallet in send coins (1): sending $coinsAmount to $publicKey")
 
         val coins: BigDecimal =
             try {
                 BigDecimal(coinsAmount.toDouble())
             } catch (e: NumberFormatException) {
-                Log.d("MusicDao", "Wallet (2): failed to parse $coinsAmount")
+                Log.d("WalletSend", "Wallet (2): failed to parse $coinsAmount")
                 null
             } ?: return false
 
         val satoshiAmount = (coins * SATS_PER_BITCOIN).toLong()
-
-        val targetAddress: Address =
-            try {
+        // HERE IT FAILS!!!
+        val targetAddress: Address =  try {
                 Address.fromString(config.networkParams, publicKey)
             } catch (e: Exception) {
-                Log.d("MusicDao", "Wallet (3): failed to parse $publicKey")
+                Log.d("WalletSend", "Wallet (3): failed to parse $publicKey")
+                Log.d("WalletSend","${e.message}")
                 null
             } ?: return false
 
         val sendRequest = SendRequest.to(targetAddress, Coin.valueOf(satoshiAmount))
 
+        metadata?.let {
+            val opReturnBytes = it.toByteArray(Charsets.UTF_8)
+            if (opReturnBytes.size > 80) {
+                Log.d("MusicDao", "Wallet: metadata too long for OP_RETURN (max 80 bytes)")
+                return false
+            }
+            val opReturnScript = ScriptBuilder.createOpReturnScript(opReturnBytes)
+            sendRequest.tx.addOutput(Coin.ZERO, opReturnScript)
+            Log.d("MusicDao", "Wallet: added OP_RETURN with metadata: $metadata")
+        }
+
         return try {
             app.wallet().sendCoins(sendRequest)
-            Log.d("MusicDao", "Wallet (2): successfully sent $coinsAmount to $publicKey")
+            Log.d("WalletSend", "Wallet (2): successfully sent $coinsAmount to $publicKey")
             true
         } catch (e: Exception) {
-            Log.d("MusicDao", "Wallet (3): failed sending $coinsAmount to $publicKey")
+            Log.d("WalletSend", "Wallet (3): failed sending $coinsAmount to $publicKey")
             false
         }
     }
@@ -188,6 +202,14 @@ class WalletService(val config: WalletConfig, private val app: WalletAppKit) {
         }
     }
 
+    fun createWatchingWallet(address: String): Wallet {
+        val params = wallet().params
+        val watchAddress = Address.fromString(params, address)
+        val watchOnlyWallet = Wallet(params)
+        watchOnlyWallet.addWatchedAddress(watchAddress)
+        return watchOnlyWallet
+    }
+
     companion object {
         val SATS_PER_BITCOIN = BigDecimal(100_000_000)
     }
@@ -198,3 +220,12 @@ data class UserWalletTransaction(
     val value: Coin,
     val date: Date
 )
+
+fun UserWalletTransaction.toTransactionInfo(): TransactionInfo {
+    return TransactionInfo(
+        txid = transaction.txId,
+        valueSatoshi = value.value,
+        timestamp = date.time
+    )
+}
+

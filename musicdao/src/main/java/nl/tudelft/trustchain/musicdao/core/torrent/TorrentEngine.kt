@@ -385,9 +385,12 @@ class TorrentEngine
 
             fun magnetToInfoHash(magnet: String): String? {
                 val mark = "magnet:?xt=urn:btih:"
-                val start = magnet.indexOf(mark) + mark.length
-                if (start == -1) return null
-                return magnet.substring(20, start + 40)
+                if (!magnet.startsWith(mark)) {
+                    Log.w("TorrentEngine", "Invalid or restricted magnet: $magnet")
+                    return null
+                }
+                val hash = magnet.removePrefix(mark).substringBefore("&")
+                return if (hash.length == 40) hash else null
             }
 
             /**

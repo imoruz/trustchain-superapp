@@ -53,12 +53,13 @@ class PlayerViewModel(context: Context, database: CacheDatabase) : ViewModel() {
                 .map { albumEntities ->
                     albumEntities.map { it.toAlbum() }
                         .flatMap { album ->
-                            album.songs.orEmpty().map { song ->
-                                song to album.cover
-                            }
+                            album.songs.orEmpty()
+                                .filter { it.file != null && it.file.exists() }
+                                .map { song -> song to album.cover }
                         }
                 }.asFlow().first()
             val (song, cover) = allSongs.firstOrNull() ?: return@launch
+            Log.i("PlayerViewModel", "Songs $song")
             song.let {
                 playDownloadedTrack(it, cover)
             }

@@ -64,6 +64,7 @@ import nl.tudelft.trustchain.eurotoken.community.EuroTokenCommunity
 import nl.tudelft.trustchain.eurotoken.db.TrustStore
 import nl.tudelft.trustchain.musicdao.core.dao.DaoCommunity
 import nl.tudelft.trustchain.musicdao.core.ipv8.MusicCommunity
+import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
 import nl.tudelft.trustchain.valuetransfer.community.IdentityCommunity
 import nl.tudelft.trustchain.valuetransfer.community.PeerChatCommunity
 import nl.tudelft.trustchain.valuetransfer.db.IdentityStore
@@ -111,6 +112,7 @@ class TrustChainApplication : Application() {
                         createMusicCommunity(),
                         createIdentityCommunity(),
                         createFOCCommunity(),
+                        createSharedWalletCommunity()
                     ),
                 walkerInterval = 5.0
             )
@@ -329,6 +331,39 @@ class TrustChainApplication : Application() {
             listOf(randomWalk, nsd)
         )
     }
+
+//    private fun createSharedWalletCommunity(): OverlayConfiguration<SharedWalletCommunity> {
+//        val randomWalk = RandomWalk.Factory()
+//        val driver = AndroidSqliteDriver(Database.Schema, this, "music-private.db")
+//        val store = TrustChainSQLiteStore(Database(driver))
+//        val ownWalletId: String = walletService.protocolAddress().toString()
+//        return OverlayConfiguration(
+//            SharedWalletCommunity.Factory(TrustChainSettings(), store),
+//            listOf(randomWalk) // add discovery strategies as needed
+//        )
+//    }
+    private fun createSharedWalletCommunity(): OverlayConfiguration<SharedWalletCommunity> {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val driver = AndroidSqliteDriver(Database.Schema, this, "music-private.db")
+        val store = TrustChainSQLiteStore(Database(driver))
+        val savedId = prefs.getString("sharedWalletId", null)
+            ?: run {
+                // Not ready yet: return a “no-op” factory or throw, or use a placeholder.
+                Log.w("App", "SharedWallet ID not in prefs; overlay will not broadcast yet.")
+                return OverlayConfiguration(
+                    SharedWalletCommunity.Factory("UNDEFINED", TrustChainSettings(), store),
+                    listOf(RandomWalk.Factory())
+                )
+            }
+
+        val sharedFactory = SharedWalletCommunity.Factory(
+            savedId,
+            TrustChainSettings(),
+            store,
+        )
+        return OverlayConfiguration(sharedFactory, listOf(RandomWalk.Factory()))
+    }
+
 
     private fun createMusicCommunity(): OverlayConfiguration<MusicCommunity> {
         val settings = TrustChainSettings()
