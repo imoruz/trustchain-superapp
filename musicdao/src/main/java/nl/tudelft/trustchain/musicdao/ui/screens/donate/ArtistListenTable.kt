@@ -19,6 +19,7 @@ fun ArtistListenTable(listens: List<ArtistListen>) {
                 .padding(8.dp)
         ) {
             Text("Artist Address", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text("User Address", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             Text("Total Listens", fontWeight = FontWeight.Bold, modifier = Modifier.width(80.dp))
             Text("Listens by user", fontWeight = FontWeight.Bold, modifier = Modifier.width(80.dp))
         }
@@ -29,9 +30,11 @@ fun ArtistListenTable(listens: List<ArtistListen>) {
                     .padding(vertical = 4.dp, horizontal = 8.dp)
             ) {
                 Text(listen.address, modifier = Modifier.weight(1f))
+                Text(listen.userAddress, modifier = Modifier.weight(1f))
                 Text(listen.listens.toString(), modifier = Modifier.width(60.dp))
                 Text(listen.userListens.toString(), modifier = Modifier.width(60.dp))
             }
         }
+
     }
 }

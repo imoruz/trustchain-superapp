@@ -24,9 +24,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import nl.tudelft.trustchain.musicdao.ui.screens.profileMenu.CustomMenuItem
 import androidx.compose.runtime.getValue
-import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListenTable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import java.security.SecureRandom
 
 
 @Composable
@@ -64,7 +64,13 @@ fun SharedDonateScreen(
             }
 
             Log.d("WalletSend", "in shared donate screen. wallet addr is: $sharedWalletAddress")
-            val dummyMetadata = "{\"a\":\"mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy\",\"n\":20, \"u\":\"mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy\",\"un\":20}"
+
+
+            //val rawMetadata = "{\"a\":\"mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy\",\"n\":20, \"u\":\"test\",\"un\":20}"
+            //val dummyMetadata = MetadataEncryption.encryptJson(rawMetadata, MetadataStorage.key!!)
+            val dummyMetadata = "mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy 20 mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy 10"
+
+            //val dummyMetadata = "{\"a\":\"mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy\",\"n\":20, \"u\":\"test\",\"un\":20}"
             val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value, dummyMetadata)
 
             if (result) {

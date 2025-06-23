@@ -1,5 +1,4 @@
-package nl.tudelft.trustchain.musicdao.core.util
-
+package nl.tudelft.trustchain.musicdao.core.utilcle
 import org.bitcoinj.wallet.Wallet
 import org.json.JSONArray
 import org.json.JSONObject
@@ -75,9 +74,21 @@ fun getArtistListenStatsForReceived(
         tx.transaction.outputs.forEach outputLoop@{ output ->
             val script = output.scriptPubKey
             if (!script.isOpReturn) return@outputLoop
-            val opData = script.chunks.getOrNull(1)?.data ?: return@outputLoop
-            val jsonString = String(opData, Charsets.UTF_8)
+            val rawOpData = script.chunks.getOrNull(1)?.data ?: return@outputLoop
 
+            val parts = String(rawOpData, Charsets.UTF_8).split(" ")
+            val a = parts[0]
+            val n = parts[1].toIntOrNull() ?: 0
+            val u = parts[2]
+            val un = parts[3].toIntOrNull() ?: 0
+
+            val jsonObject = JSONObject()
+            jsonObject.put("a", a)
+            jsonObject.put("n", n)
+            jsonObject.put("u", u)
+            jsonObject.put("un", un)
+
+            val jsonString = jsonObject.toString()
 
             runCatching {
                 JSONObject(jsonString).let { json ->

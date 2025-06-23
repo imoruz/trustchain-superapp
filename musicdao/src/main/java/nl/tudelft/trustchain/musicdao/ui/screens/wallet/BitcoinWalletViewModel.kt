@@ -23,7 +23,7 @@ import javax.inject.Inject
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
 import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
-import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStatsForReceived
+import nl.tudelft.trustchain.musicdao.core.utilcle.getArtistListenStatsForReceived
 import nl.tudelft.trustchain.musicdao.core.wallet.toTransactionInfo
 import org.bitcoinj.core.Sha256Hash
 import org.bitcoinj.core.Transaction
@@ -288,8 +288,45 @@ constructor(
             // Distributable sats
             val distributableSat = totalSat - totalFeeSat
 
-            // Split distributable sats by listens
-            val totalUserListens = table.sumOf { it.userListens } //TODO: select a specific user for this?
+
+            // loop over users
+            //calculate how listens of each artist/total listens
+            // add those values
+
+            // Map from user to total listens
+            val totalListensPerUser = mutableMapOf<String, Long>()
+
+            // Map from user to a map of artist listens
+            val listensPerUserPerArtist = mutableMapOf<String, MutableMap<String, Long>>()
+
+            table.forEach { artistListen ->
+                val user = artistListen.userAddress
+                val artist = artistListen.address
+                val listens = artistListen.userListens
+
+                // Update total listens for user
+                totalListensPerUser[user] = totalListensPerUser.getOrDefault(user, 0L) + listens
+
+                // Update listens for this artist by user
+                val artistMap = listensPerUserPerArtist.getOrPut(user) { mutableMapOf() }
+                artistMap[artist] = artistMap.getOrDefault(artist, 0L) + listens
+            }
+
+            // Now calculate sum over users of (listens[user][artist] / totalListensPerUser[user]) for each artist:
+            val artistShare = mutableMapOf<String, Double>()
+
+            listensPerUserPerArtist.forEach { (user, artistMap) ->
+                val userTotal = totalListensPerUser[user] ?: return@forEach
+                artistMap.forEach { (artist, listens) ->
+                    val fraction = listens.toDouble() / userTotal //TODO: multiply with user contribution (money)
+                    artistShare[artist] = artistShare.getOrDefault(artist, 0.0) + fraction
+                }
+            }
+
+
+
+
+            val totalUserListens = table.sumOf { it.userListens }
             var allocated = 0L
             val payments = table.mapIndexed { idx, artistListen ->
                 val rawShare = (distributableSat * artistListen.userListens) / totalUserListens
