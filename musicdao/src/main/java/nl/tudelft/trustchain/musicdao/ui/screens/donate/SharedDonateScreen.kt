@@ -60,7 +60,7 @@ fun SharedDonateScreen(
             }
 
             Log.d("WalletSend", "in shared donate screen. wallet addr is: $sharedWalletAddress")
-            val dummyMetadata = "{\"a\":\"mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP\",\"n\":12}"
+            val dummyMetadata = "{\"a\":\"mnqA6gbqbCH2hfmtewPQ8n3XabAZutbMqj\",\"n\":20}"
             val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value, dummyMetadata)
 
             if (result) {
@@ -105,13 +105,20 @@ fun SharedDonateScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-        val showTable = myWalletAddress == sharedWalletAddress
-        if (showTable) {
+        val isSharedWallet = myWalletAddress == sharedWalletAddress
+        if (isSharedWallet) {
             ArtistListenTable(artistListenTable)
-        }
+            Spacer(modifier = Modifier.weight(1f))
+            CustomMenuItem(
+                text = "Distribute Pro-rata",
+                onClick = { bitcoinWalletViewModel.distributeProportionally()}
+            )
 
-        Spacer(modifier = Modifier.weight(1f))
-        CustomMenuItem(text = "Confirm Send", onClick = { send() })
+        }
+        else {
+            Spacer(modifier = Modifier.weight(1f))
+            CustomMenuItem(text = "Confirm Send", onClick = { send() })
+        }
     }
 }
 
