@@ -137,7 +137,7 @@ class SharedWalletCommunity(
 
     private fun onSharedWalletMessage(packet: Packet) {
         val (peer, payload) = packet.getAuthPayload(SharedWalletMessage)
-        val messageId = payload.walletId + ":" + payload.originPublicKey.toHex()
+        val messageId = "${payload.walletId}:${payload.originPublicKey.toHex()}:${payload.timestamp}"
 
         if (isDuplicateMessage(messageId)) {
             Log.i("WalletDiscovery", "Duplicate message ignored: $messageId")
