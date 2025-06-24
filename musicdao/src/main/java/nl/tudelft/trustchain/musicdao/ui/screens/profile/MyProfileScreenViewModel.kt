@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import nl.tudelft.trustchain.musicdao.core.dao.DaoCommunity
 import nl.tudelft.trustchain.musicdao.core.repositories.AlbumRepository
 import javax.inject.Inject
 
@@ -21,12 +22,14 @@ class MyProfileScreenViewModel
         private val artistRepository: ArtistRepository,
         private val albumRepository: AlbumRepository,
         private val musicCommunity: MusicCommunity,
+        private val daoCommunity: DaoCommunity
     ) : ViewModel() {
+
         private val _profile: MutableStateFlow<Artist?> = MutableStateFlow(null)
         var profile: StateFlow<Artist?> = _profile
 
-        private val _peerAmount: MutableLiveData<Int> = MutableLiveData()
-        var peerAmount: LiveData<Int> = _peerAmount
+        private val _peerAmount = MutableStateFlow(0)
+        val peerAmount: StateFlow<Int> = _peerAmount
 
         private val _totalReleaseAmount: MutableLiveData<Int> = MutableLiveData()
         var totalReleaseAmount: LiveData<Int> = _totalReleaseAmount
@@ -47,8 +50,15 @@ class MyProfileScreenViewModel
         init {
             viewModelScope.launch {
                 profile = artistRepository.getArtistStateFlow(publicKey())
-                _peerAmount.value = musicCommunity.getPeers().size
+//                _peerAmount.value = musicCommunity.getPeers().size
+                _peerAmount.value = daoCommunity.getPeers().size
                 _totalReleaseAmount.value = albumRepository.getAlbums().size
             }
         }
+        fun refreshPeers() {
+            viewModelScope.launch {
+                _peerAmount.value = musicCommunity.getPeers().size
+            }
+        }
+
     }
