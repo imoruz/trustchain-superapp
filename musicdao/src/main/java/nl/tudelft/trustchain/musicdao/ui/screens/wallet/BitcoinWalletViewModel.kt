@@ -131,12 +131,16 @@ constructor(
 
         fun updateArtistListenTable() {
             val myWalletAddress = walletService.protocolAddress().toString()
+
             val listenMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
+
 
             val artistListenTable = listenMap.mapNotNull { (addr, stats) ->
                 val (user_addr, user_count) = stats.userCounts.maxByOrNull { it.value } ?: return@mapNotNull null
                 ArtistListen(addr, stats.totalCount, user_addr, user_count)
             }
+
+
             _artistListenTable.value = artistListenTable
 //            val table = getArtistListenStats(walletService.wallet())
 //                .map { (addr, count) -> ArtistListen(addr, count) }
@@ -272,6 +276,15 @@ constructor(
                 return@launch
             }
 
+            // Get actual payment data from listen stats
+            val myWalletAddress = walletService.protocolAddress().toString()
+            val statsMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
+
+            if (statsMap.isEmpty()) {
+                SnackbarHandler.displaySnackbar("No listen/payment data to distribute from")
+                return@launch
+            }
+
             // Estimate per-tx fee
             val feePerKB: Long = MIN_FEE_PER_KB
             val txSizeKB = ESTIMATED_KB_PER_TX
@@ -288,57 +301,53 @@ constructor(
             // Distributable sats
             val distributableSat = totalSat - totalFeeSat
 
-
-            // loop over users
-            //calculate how listens of each artist/total listens
-            // add those values
-
-            // Map from user to total listens
+            // For each user, total listens and total amount sent
             val totalListensPerUser = mutableMapOf<String, Long>()
+            val totalSentPerUser = mutableMapOf<String, Long>()
 
-            // Map from user to a map of artist listens
-            val listensPerUserPerArtist = mutableMapOf<String, MutableMap<String, Long>>()
-
-            table.forEach { artistListen ->
-                val user = artistListen.userAddress
-                val artist = artistListen.address
-                val listens = artistListen.userListens
-
-                // Update total listens for user
-                totalListensPerUser[user] = totalListensPerUser.getOrDefault(user, 0L) + listens
-
-                // Update listens for this artist by user
-                val artistMap = listensPerUserPerArtist.getOrPut(user) { mutableMapOf() }
-                artistMap[artist] = artistMap.getOrDefault(artist, 0L) + listens
-            }
-
-            // Now calculate sum over users of (listens[user][artist] / totalListensPerUser[user]) for each artist:
-            val artistShare = mutableMapOf<String, Double>()
-
-            listensPerUserPerArtist.forEach { (user, artistMap) ->
-                val userTotal = totalListensPerUser[user] ?: return@forEach
-                artistMap.forEach { (artist, listens) ->
-                    val fraction = listens.toDouble() / userTotal //TODO: multiply with user contribution (money)
-                    artistShare[artist] = artistShare.getOrDefault(artist, 0.0) + fraction
+            statsMap.forEach { (_, stats) ->
+                stats.userCounts.forEach { (user, listens) ->
+                    totalListensPerUser[user] = totalListensPerUser.getOrDefault(user, 0L) + listens
+                }
+                stats.paymentAmounts.forEach { (user, amount) ->
+                    totalSentPerUser[user] = totalSentPerUser.getOrDefault(user, 0L) + amount
                 }
             }
 
+            // Compute weighted contribution for each artist
+            val artistWeightedShare = mutableMapOf<String, Double>()
 
+            statsMap.forEach { (artist, stats) ->
+                stats.userCounts.forEach { (user, userListensToArtist) ->
+                    val totalListens = totalListensPerUser[user] ?: return@forEach
+                    val totalSent = totalSentPerUser[user] ?: return@forEach
+                    if (totalListens == 0L || totalSent == 0L) return@forEach
 
+                    val userContributionToArtist =
+                        (userListensToArtist.toDouble() / totalListens.toDouble()) * totalSent.toDouble()
 
-            val totalUserListens = table.sumOf { it.userListens }
+                    artistWeightedShare[artist] = artistWeightedShare.getOrDefault(artist, 0.0) + userContributionToArtist
+                }
+            }
+
+            val totalWeighted = artistWeightedShare.values.sum()
+            if (totalWeighted == 0.0) {
+                SnackbarHandler.displaySnackbar("Total weighted contribution is zero")
+                return@launch
+            }
+
+            val artistList = artistWeightedShare.entries.toList()
             var allocated = 0L
-            val payments = table.mapIndexed { idx, artistListen ->
-                val rawShare = (distributableSat * artistListen.userListens) / totalUserListens
+            val payments = artistList.mapIndexed { idx, (artist, weight) ->
+                val rawShare = ((weight / totalWeighted) * distributableSat).toLong()
                 allocated += rawShare
-
-                // Give any leftover sats to the last artist
-                val finalShare = if (idx == table.lastIndex) {
+                val finalShare = if (idx == artistList.lastIndex) {
                     rawShare + (distributableSat - allocated)
                 } else rawShare
-
-                artistListen.address to finalShare
+                artist to finalShare
             }
+
+
 
             // Send each payment (each will incur ~feePerTxSat sats in addition)
             var allSucceeded = true

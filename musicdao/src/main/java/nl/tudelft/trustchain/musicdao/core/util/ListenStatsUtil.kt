@@ -14,7 +14,8 @@ import java.util.*
 
 data class ListenStats(
     var totalCount: Int = 0,
-    val userCounts: MutableMap<String, Int> = mutableMapOf()
+    val userCounts: MutableMap<String, Int> = mutableMapOf(),
+    val paymentAmounts: MutableMap<String, Long> = mutableMapOf()
 )
 
 fun getArtistListenStatsForReceived(
@@ -51,6 +52,9 @@ fun getArtistListenStatsForReceived(
     val cutoff = listOfNotNull(cutoff30, lastProRataDate).maxOrNull()!!
 
     val artistStatsMap = mutableMapOf<String, ListenStats>()
+
+    //val userArtistPayments = mutableMapOf<String, MutableMap<String, Long>>()
+
 
     // Scan only received transactions after that cutoff
     wallet.walletTransactions.forEach { tx ->
@@ -97,9 +101,23 @@ fun getArtistListenStatsForReceived(
                         val count  = json.getInt("n")
                         val user = json.getString("u")
                         val userCount = json.getInt("un")
+
+                        val amountToArtist = tx.transaction.outputs
+                            .filter { output ->
+                                try {
+                                    val script = output.scriptPubKey
+                                    !script.isOpReturn &&
+                                        script.getToAddress(wallet.params).toString() == artist
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            }
+                            .sumOf { it.value.value }
+
                         val stats = artistStatsMap.getOrPut(artist) { ListenStats() }
                         stats.totalCount += count
                         stats.userCounts[user] = stats.userCounts.getOrDefault(user, 0) + userCount
+                        stats.paymentAmounts[user] = stats.paymentAmounts.getOrDefault(user, 0) + amountToArtist
                     }
                 }
             }.onFailure {
@@ -112,9 +130,22 @@ fun getArtistListenStatsForReceived(
                                 val count  = item.getInt("n")
                                 val user = item.getString("u")
                                 val userCount = item.getInt("un")
+
+                                val amountToArtist = tx.transaction.outputs
+                                    .filter { output ->
+                                        try {
+                                            val script = output.scriptPubKey
+                                            !script.isOpReturn &&
+                                                script.getToAddress(wallet.params).toString() == artist
+                                        } catch (e: Exception) {
+                                            false
+                                        }
+                                    }.sumOf { it.value.value }
+
                                 val stats = artistStatsMap.getOrPut(artist) { ListenStats() }
                                 stats.totalCount += count
                                 stats.userCounts[user] = stats.userCounts.getOrDefault(user, 0) + userCount
+                                stats.paymentAmounts[user] = stats.paymentAmounts.getOrDefault(user, 0) + amountToArtist
 
                             }
                         }
