@@ -67,6 +67,7 @@ class SharedWalletCommunity(
         lastReceivedWalletTimestamp = System.currentTimeMillis()
         _discoveredWalletAddress.value = myWalletId  // Ensure local discovery
         broadcastSharedWalletMessage()
+
         Log.i("WalletJoin", "This device became the shared wallet and set itself as discovered.")
     }
 
@@ -86,6 +87,7 @@ class SharedWalletCommunity(
             if (index >= MAX_BROADCAST_PEERS) break
             send(peer, packet)
             Log.d("WalletSend", "Wallet message sent.")
+            Log.d("WalletSend", "I have origin key: $originKey, walletToBroadcast: $walletToBroadcast and isSharedWallet: $isSharedWallet")
             count++
         }
         return count
@@ -142,6 +144,8 @@ class SharedWalletCommunity(
             return
         }
 
+        Log.i("PLM SharedWalletCommunity", "peer: $peer, messageid: $messageId, payload: $payload")
+
         if (!payload.isSharedWallet) {
             Log.i("WalletDiscovery", "Ignored wallet message from non-shared-wallet peer: ${peer.mid}")
             return
@@ -154,6 +158,17 @@ class SharedWalletCommunity(
             lastReceivedWalletTimestamp = payload.timestamp
             _discoveredWalletAddress.value = walletId
             _currentPropagatedWalletId.value = walletId
+            if (_sharedWalletInfoState.value != null) {
+                if (_sharedWalletInfoState.value!!.walletId == walletId) {
+                    _sharedWalletInfoState.value = SharedWalletInfoMessage(
+                        originPublicKey = payload.originPublicKey,
+                        ttl = payload.ttl,
+                        walletId = payload.walletId,
+                        balanceSatoshi = -1L,
+                        transactions = emptyList()
+                    )
+                }
+            }
             Log.i("WalletDiscovery", "Accepted newer wallet broadcast with timestamp=${payload.timestamp}")
 
             if (!hasLocalWallet(walletId)) {

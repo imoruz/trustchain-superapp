@@ -32,6 +32,7 @@ fun SharedWalletOverviewScreen(bitcoinWalletViewModel: BitcoinWalletViewModel) {
     LaunchedEffect(sharedWalletBalance, sharedWalletTransactions) {
         Log.d("SharedWalletScreen", "sharedWalletBalance: ${sharedWalletBalance?.toFriendlyString()}")
         Log.d("SharedWalletScreen", "sharedWalletTransactions count: ${sharedWalletTransactions.size}")
+        Log.d("SharedWalletScreen", "isStarted: $isStarted")
     }
 
     if (!isStarted) {
