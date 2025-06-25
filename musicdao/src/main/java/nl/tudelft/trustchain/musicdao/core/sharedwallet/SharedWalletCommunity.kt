@@ -1,6 +1,7 @@
 package nl.tudelft.trustchain.musicdao.core.sharedwallet
 
 import android.util.Log
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import nl.tudelft.ipv8.Overlay
@@ -13,8 +14,10 @@ import nl.tudelft.ipv8.keyvault.PublicKey
 import nl.tudelft.ipv8.keyvault.defaultCryptoProvider
 import nl.tudelft.ipv8.messaging.Packet
 import nl.tudelft.ipv8.util.hexToBytes
+import org.bitcoinj.core.Coin
 import nl.tudelft.ipv8.util.toHex
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.messages.SharedWalletMessage
+import nl.tudelft.trustchain.musicdao.core.wallet.UserWalletTransaction
 
 import java.util.*
 
@@ -61,17 +64,30 @@ class SharedWalletCommunity(
         messageHandlers[MessageId.SHARED_WALLET_INFO_MESSAGE] = ::onSharedWalletInfoMessage
     }
 
-    fun becomeSharedWallet() {
+    suspend fun becomeSharedWallet(balance: Coin?, transactions: List<UserWalletTransaction>) {
         isSharedWallet = true
         _currentPropagatedWalletId.value = myWalletId
         lastReceivedWalletTimestamp = System.currentTimeMillis()
         _discoveredWalletAddress.value = myWalletId  // Ensure local discovery
         broadcastSharedWalletMessage()
+        val transactionsInfo = transactions.map { transaction -> TransactionInfo(transaction.transaction.txId, transaction.value.value, transaction.date.time) }
+        broadcastSharedWalletInfo(myWalletId, balance!!.value, transactionsInfo)
 
         Log.i("WalletJoin", "This device became the shared wallet and set itself as discovered.")
     }
 
-    fun broadcastSharedWalletMessage(ttl: UInt = 2u): Int {
+    suspend fun waitForPeers(retryCount: Int = 5, delayMillis: Long = 1500): List<Peer>? {
+        repeat(retryCount) {
+            val peers = getPeers()
+            if (!peers.isNullOrEmpty()) return peers
+            Log.w("PeerWait", "No peers yet. Retrying... (${it + 1}/$retryCount)")
+            delay(delayMillis)
+        }
+        Log.e("PeerWait", "Still no peers after $retryCount retries.")
+        return null
+    }
+
+    suspend fun broadcastSharedWalletMessage(ttl: UInt = 2u): Int {
 
         val originKey = safeMyPeer.publicKey.keyToBin()
         val walletToBroadcast = _currentPropagatedWalletId.value ?: myWalletId
@@ -81,7 +97,7 @@ class SharedWalletCommunity(
         )
 
         var count = 0
-        val peers = getPeers()
+        val peers = waitForPeers() ?: return 0
         Log.d("WalletSend", "Broadcasting wallet message to peers: ${peers.map { it.key }.joinToString(", ")}")
         for ((index, peer) in peers.withIndex()) {
             if (index >= MAX_BROADCAST_PEERS) break
@@ -93,7 +109,7 @@ class SharedWalletCommunity(
         return count
     }
 
-    fun broadcastSharedWalletInfo(
+    suspend fun broadcastSharedWalletInfo(
         walletId: String,
         balanceSatoshi: Long,
         transactions: List<TransactionInfo>,
@@ -104,7 +120,7 @@ class SharedWalletCommunity(
         val packet = serializePacket(MessageId.SHARED_WALLET_INFO_MESSAGE, infoMessage)
 
         var count = 0
-        val peers = getPeers()
+        val peers = waitForPeers() ?: return 0
         Log.d("WalletInfoSend", "Broadcasting wallet info to peers: ${peers.map { it.key }.joinToString(", ")}")
         for ((index, peer) in peers.withIndex()) {
             if (index >= MAX_BROADCAST_PEERS) break
@@ -144,8 +160,6 @@ class SharedWalletCommunity(
             return
         }
 
-        Log.i("PLM SharedWalletCommunity", "peer: $peer, messageid: $messageId, payload: $payload")
-
         if (!payload.isSharedWallet) {
             Log.i("WalletDiscovery", "Ignored wallet message from non-shared-wallet peer: ${peer.mid}")
             return
@@ -158,26 +172,16 @@ class SharedWalletCommunity(
             lastReceivedWalletTimestamp = payload.timestamp
             _discoveredWalletAddress.value = walletId
             _currentPropagatedWalletId.value = walletId
-            if (_sharedWalletInfoState.value != null) {
-                if (_sharedWalletInfoState.value!!.walletId == walletId) {
-                    _sharedWalletInfoState.value = SharedWalletInfoMessage(
-                        originPublicKey = payload.originPublicKey,
-                        ttl = payload.ttl,
-                        walletId = payload.walletId,
-                        balanceSatoshi = -1L,
-                        transactions = emptyList()
-                    )
-                }
-            }
+
             Log.i("WalletDiscovery", "Accepted newer wallet broadcast with timestamp=${payload.timestamp}")
 
             if (!hasLocalWallet(walletId)) {
                 joinWallet(walletId)
             }
 
-            if (payload.checkTTL()) {
-                broadcastSharedWalletMessage(payload.ttl)
-            }
+//            if (payload.checkTTL()) {
+//                broadcastSharedWalletMessage(payload.ttl)
+//            }
         } else {
             Log.i("WalletDiscovery", "Ignored older wallet broadcast with timestamp=${payload.timestamp}")
         }
@@ -186,7 +190,7 @@ class SharedWalletCommunity(
     private fun onSharedWalletInfoMessage(packet: Packet) {
         val (peer, payload) = packet.getAuthPayload(SharedWalletInfoMessage)
 
-        val messageId = payload.walletId + ":" + payload.originPublicKey.toHex()
+        val messageId = payload.walletId + ":" + payload.originPublicKey.toHex() + ":SharedWalletInfo"
         if (isDuplicateMessage(messageId)) {
             Log.i("WalletInfo", "Duplicate info message ignored: $messageId")
             return

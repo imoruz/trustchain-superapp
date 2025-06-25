@@ -11,7 +11,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -22,10 +21,7 @@ import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
 import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
 import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStatsForReceived
-import nl.tudelft.trustchain.musicdao.core.wallet.toTransactionInfo
-import org.bitcoinj.core.Sha256Hash
-import org.bitcoinj.core.Transaction
-import java.util.Date
+
 
 
 @HiltViewModel
@@ -69,23 +65,19 @@ constructor(
         }
 
         viewModelScope.launch {
-            Log.d("PLM", "Starting to collect sharedWalletInfoState")
             sharedWalletCommunity.sharedWalletInfoState.collect { info ->
                 if (info != null && !sharedWalletCommunity.isSharedWallet) {
                     // Only update if this device is NOT the shared wallet
                     _sharedWalletBalance.value = Coin.valueOf(info.balanceSatoshi)
                     _sharedWalletTransactions.value = info.transactions
                     Log.d(TAG, "Updated shared wallet balance and transactions from received info ${_sharedWalletBalance}, ${_sharedWalletTransactions}")
-                    Log.d("PLM", "sharedwalletbalance: ${_sharedWalletBalance.value}, sharedwallettransactions: ${_sharedWalletTransactions.value}")
                 }
             }
         }
 
         viewModelScope.launch {
-            Log.d("PLM", "sharedwalletbalance block")
             sharedWalletBalance
                 .onEach { newBalance ->
-                    Log.d("PLM", "onEach triggered! newBalance = $newBalance")
                     if (newBalance != null && sharedWalletCommunity.isSharedWallet) {
                         val walletId = sharedWalletCommunity.discoveredWalletAddress.value ?: return@onEach
                         val balanceSatoshi = newBalance.value
@@ -93,9 +85,8 @@ constructor(
 
                         sharedWalletCommunity.broadcastSharedWalletInfo(walletId, balanceSatoshi, txInfos)
                         Log.d(TAG, "Broadcasted shared wallet balance and transactions")
-                        Log.d("PLM", "walletId: $walletId, balanceSatoshi: $balanceSatoshi, txInfos: $txInfos")
                     }
-                }.launchIn(viewModelScope)
+                }
         }
 
 

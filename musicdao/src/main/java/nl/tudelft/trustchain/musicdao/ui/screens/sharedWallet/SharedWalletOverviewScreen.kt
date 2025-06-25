@@ -28,6 +28,7 @@ fun SharedWalletOverviewScreen(bitcoinWalletViewModel: BitcoinWalletViewModel) {
     val sharedWalletBalance by bitcoinWalletViewModel.sharedWalletBalance.collectAsState()
     val sharedWalletTransactions by bitcoinWalletViewModel.sharedWalletTransactions.collectAsState()
     val isStarted by bitcoinWalletViewModel.isStarted.collectAsState()
+    val sharedWalletAddress by bitcoinWalletViewModel.sharedWalletAddress.collectAsState()
 
     LaunchedEffect(sharedWalletBalance, sharedWalletTransactions) {
         Log.d("SharedWalletScreen", "sharedWalletBalance: ${sharedWalletBalance?.toFriendlyString()}")
@@ -51,6 +52,10 @@ fun SharedWalletOverviewScreen(bitcoinWalletViewModel: BitcoinWalletViewModel) {
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
     ) {
+        Text(
+            text = "Shared wallet found: ${sharedWalletAddress ?: "Searching..."}",
+            modifier = Modifier.padding(bottom = 10.dp)
+        )
         Text("Shared Wallet Balance", style = MaterialTheme.typography.h6)
         Text(
             text = sharedWalletBalance?.toFriendlyString() ?: "0.00 BTC",
