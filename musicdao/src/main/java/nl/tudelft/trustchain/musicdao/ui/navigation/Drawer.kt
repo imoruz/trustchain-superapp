@@ -18,11 +18,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
 import nl.tudelft.trustchain.musicdao.core.cache.CacheDatabase
 import nl.tudelft.trustchain.musicdao.core.cache.entities.AlbumEntity
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreenViewModel
 import nl.tudelft.trustchain.musicdao.ui.screens.wallet.BitcoinWalletViewModel
 import nl.tudelft.trustchain.musicdao.ui.SnackbarHandler
+import nl.tudelft.trustchain.musicdao.ui.SnackbarHandler.coroutineScope
 import nl.tudelft.trustchain.musicdao.ui.screens.dao.DaoViewModel
 
 @ExperimentalMaterialApi
@@ -94,7 +96,9 @@ fun Drawer(
         DropdownMenuItem(onClick = {
             val pubKey = bitcoinWalletViewModel.publicKey.value
             if (!pubKey.isNullOrBlank()) {
-                bitcoinWalletViewModel.sharedWalletCommunity.becomeSharedWallet()
+                coroutineScope!!.launch { // Launch a new coroutine
+                    bitcoinWalletViewModel.sharedWalletCommunity.becomeSharedWallet(bitcoinWalletViewModel.confirmedBalance.value, bitcoinWalletViewModel.walletTransactions.value)
+                }
                 SnackbarHandler.displaySnackbar("This device is now a shared wallet")
             } else {
                 SnackbarHandler.displaySnackbar("Wallet not ready")

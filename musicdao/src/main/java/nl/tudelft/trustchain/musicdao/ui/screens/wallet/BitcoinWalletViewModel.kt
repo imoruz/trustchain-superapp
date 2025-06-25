@@ -21,10 +21,7 @@ import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
 import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
 import nl.tudelft.trustchain.musicdao.core.util.getArtistListenStatsForReceived
-import nl.tudelft.trustchain.musicdao.core.wallet.toTransactionInfo
-import org.bitcoinj.core.Sha256Hash
-import org.bitcoinj.core.Transaction
-import java.util.Date
+
 
 
 @HiltViewModel
@@ -63,7 +60,7 @@ constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "Error broadcasting shared wallet presence: ${e.message}")
                 }
-                delay(1_000)
+                delay(10_000)
             }
         }
 
