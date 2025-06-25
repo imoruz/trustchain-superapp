@@ -25,6 +25,7 @@ import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreenViewMode
 import nl.tudelft.trustchain.musicdao.ui.screens.wallet.BitcoinWalletViewModel
 import nl.tudelft.trustchain.musicdao.ui.SnackbarHandler
 import nl.tudelft.trustchain.musicdao.ui.SnackbarHandler.coroutineScope
+import nl.tudelft.trustchain.musicdao.ui.screens.dao.DaoViewModel
 
 @ExperimentalMaterialApi
 @Composable
@@ -33,13 +34,15 @@ fun Drawer(
     profileScreenViewModel: MyProfileScreenViewModel,
     database: CacheDatabase,
     bitcoinWalletViewModel: BitcoinWalletViewModel,
+    daoViewModel: DaoViewModel,
 ) {
     val profile = profileScreenViewModel.profile.collectAsState()
-    val peerAmount by profileScreenViewModel.peerAmount.observeAsState(0)
+    val peerAmount by daoViewModel.daoPeers.collectAsState()
     val totalReleaseAmount by profileScreenViewModel.totalReleaseAmount.observeAsState(0)
     val albumStatsState = remember { mutableStateOf(emptyList<AlbumEntity>()) }
 
     LaunchedEffect(Unit) {
+        daoViewModel.refreshOneShot()
         albumStatsState.value = database.dao.getAll()
     }
 
