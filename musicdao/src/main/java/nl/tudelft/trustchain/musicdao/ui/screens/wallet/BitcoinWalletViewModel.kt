@@ -132,19 +132,22 @@ constructor(
         fun updateArtistListenTable() {
             val myWalletAddress = walletService.protocolAddress().toString()
 
-            val listenMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
+//            val listenMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
+//
+//
+//            val artistListenTable = listenMap.mapNotNull { (addr, stats) ->
+//                val (user_addr, user_count) = stats.userCounts.maxByOrNull { it.value } ?: return@mapNotNull null
+//                ArtistListen(addr, stats.totalCount, user_addr, user_count)
+//            }
 
 
-            val artistListenTable = listenMap.mapNotNull { (addr, stats) ->
-                val (user_addr, user_count) = stats.userCounts.maxByOrNull { it.value } ?: return@mapNotNull null
-                ArtistListen(addr, stats.totalCount, user_addr, user_count)
-            }
-
-
-            _artistListenTable.value = artistListenTable
-//            val table = getArtistListenStats(walletService.wallet())
-//                .map { (addr, count) -> ArtistListen(addr, count) }
-//            _artistListenTable.value = table
+            //_artistListenTable.value = artistListenTable
+            // Dummy data for testing
+            _artistListenTable.value = listOf(
+                ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP", 120, "userA", 50),
+                ArtistListen("1BoatSLRHtKNngkdXEeobR76b53LETtpyT",  80, "userA", 30),
+                ArtistListen("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy", 40, "userC", 20)
+            )
         }
 
         fun requestFaucet() {
