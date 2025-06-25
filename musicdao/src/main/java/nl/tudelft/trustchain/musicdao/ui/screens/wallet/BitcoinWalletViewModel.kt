@@ -23,6 +23,7 @@ import javax.inject.Inject
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.SharedWalletCommunity
 import nl.tudelft.trustchain.musicdao.core.sharedwallet.TransactionInfo
 import nl.tudelft.trustchain.musicdao.ui.screens.donate.ArtistListen
+import nl.tudelft.trustchain.musicdao.ui.screens.wallet.ListenStats
 import nl.tudelft.trustchain.musicdao.core.utilcle.getArtistListenStatsForReceived
 import nl.tudelft.trustchain.musicdao.core.wallet.toTransactionInfo
 import org.bitcoinj.core.Sha256Hash
@@ -187,11 +188,14 @@ constructor(
     fun distributeProportionally() {
         viewModelScope.launch {
             // current balance
+
             val coin: Coin? = confirmedBalance.value
+
             if (coin == null || coin.isZero) {
                 SnackbarHandler.displaySnackbar("No funds to distribute")
                 return@launch
             }
+
             val totalSat = coin.value
 
             // artist-listens table
@@ -265,7 +269,8 @@ constructor(
     fun distributeProportionallyUserCentric() {
         viewModelScope.launch {
             // current balance
-            val coin: Coin? = confirmedBalance.value
+            val coin: Coin = Coin.valueOf(1_600_000L)
+            //val coin: Coin? = confirmedBalance.value
             if (coin == null || coin.isZero) {
                 SnackbarHandler.displaySnackbar("No funds to distribute")
                 return@launch
@@ -281,7 +286,49 @@ constructor(
 
             // Get actual payment data from listen stats
             val myWalletAddress = walletService.protocolAddress().toString()
-            val statsMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
+            //val statsMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
+
+            val statsMap: Map<String, ListenStats> = mapOf(
+                // Artist 1
+                "mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP" to ListenStats(
+                    totalCount = 120,
+                    userCounts = mutableMapOf(
+                        "userA" to 50,
+                        "userB" to 70
+                    ),
+                    paymentAmounts = mutableMapOf(
+                        "userA" to 300_000L, // 0.003 BTC
+                        "userB" to 500_000L  // 0.005 BTC
+                    )
+                ),
+
+                // Artist 2
+                "1BoatSLRHtKNngkdXEeobR76b53LETtpyT" to ListenStats(
+                    totalCount = 80,
+                    userCounts = mutableMapOf(
+                        "userA" to 30,
+                        "userD" to 50
+                    ),
+                    paymentAmounts = mutableMapOf(
+                        "userA" to 200_000L,
+                        "userD" to 400_000L
+                    )
+                ),
+
+                // Artist 3
+                "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy" to ListenStats(
+                    totalCount = 40,
+                    userCounts = mutableMapOf(
+                        "userC" to 20,
+                        "userE" to 20
+                    ),
+                    paymentAmounts = mutableMapOf(
+                        "userC" to 100_000L,
+                        "userE" to 100_000L
+                    )
+                )
+            )
+
 
             if (statsMap.isEmpty()) {
                 SnackbarHandler.displaySnackbar("No listen/payment data to distribute from")
@@ -303,6 +350,9 @@ constructor(
 
             // Distributable sats
             val distributableSat = totalSat - totalFeeSat
+            Log.d(TAG, "totalSat: ${totalSat}")
+            Log.d(TAG, "distributableSet: ${distributableSat}")
+
 
             // For each user, total listens and total amount sent
             val totalListensPerUser = mutableMapOf<String, Long>()
@@ -333,6 +383,12 @@ constructor(
                 }
             }
 
+            artistWeightedShare.forEach { (artist, weightedShare) ->
+                Log.d(TAG, "Artist: $artist has weighted share: $weightedShare")
+            }
+
+
+
             val totalWeighted = artistWeightedShare.values.sum()
             if (totalWeighted == 0.0) {
                 SnackbarHandler.displaySnackbar("Total weighted contribution is zero")
@@ -341,12 +397,23 @@ constructor(
 
             val artistList = artistWeightedShare.entries.toList()
             var allocated = 0L
+
+            Log.d(TAG, "🔄 Starting proportional payment calculation:")
+            Log.d(TAG, "→ Total weighted value: $totalWeighted")
+            Log.d(TAG, "→ Total distributable satoshis: $distributableSat")
+
             val payments = artistList.mapIndexed { idx, (artist, weight) ->
                 val rawShare = ((weight / totalWeighted) * distributableSat).toLong()
                 allocated += rawShare
                 val finalShare = if (idx == artistList.lastIndex) {
                     rawShare + (distributableSat - allocated)
                 } else rawShare
+
+                Log.d(TAG, "Artist: $artist")
+                Log.d(TAG, "Weight: $weight")
+                Log.d(TAG, "Raw Share: $rawShare sat")
+                Log.d(TAG, "Final Share (with leftovers): $finalShare sat")
+
                 artist to finalShare
             }
 
@@ -357,6 +424,12 @@ constructor(
             payments.forEach { (addr, shareSat) ->
                 val shareCoin = Coin.valueOf(shareSat)
                 val shareBtc  = shareCoin.toPlainString()
+
+                Log.d(TAG, "Preparing to send payment:")
+                Log.d(TAG, "→ Recipient Address: $addr")
+                Log.d(TAG, "→ Amount in Satoshis: $shareSat")
+                Log.d(TAG, "→ Amount in BTC: $shareBtc")
+
                 val ok = donateToAddress(
                     address  = addr,
                     amount   = shareBtc,

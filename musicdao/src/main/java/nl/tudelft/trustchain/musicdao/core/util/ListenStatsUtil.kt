@@ -3,6 +3,7 @@ import org.bitcoinj.wallet.Wallet
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
+import nl.tudelft.trustchain.musicdao.ui.screens.wallet.ListenStats
 
 /**
  * Scans all wallet transactions received by [myWalletAddress] since the later of:
@@ -12,11 +13,6 @@ import java.util.*
  * Returns a map of artist bitcoin addresses to total listen counts.
  */
 
-data class ListenStats(
-    var totalCount: Int = 0,
-    val userCounts: MutableMap<String, Int> = mutableMapOf(),
-    val paymentAmounts: MutableMap<String, Long> = mutableMapOf()
-)
 
 fun getArtistListenStatsForReceived(
     wallet: Wallet,
