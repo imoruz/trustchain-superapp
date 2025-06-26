@@ -31,7 +31,6 @@ fun ArtistListenTable(listens: List<ArtistListen>) {
                 Text(listen.address, modifier = Modifier.weight(1f))
                 Text(listen.userAddress, modifier = Modifier.weight(1f))
                 Text(listen.listens.toString(), modifier = Modifier.width(60.dp))
-                Text(listen.userListens.toString(), modifier = Modifier.width(60.dp))
             }
         }
 

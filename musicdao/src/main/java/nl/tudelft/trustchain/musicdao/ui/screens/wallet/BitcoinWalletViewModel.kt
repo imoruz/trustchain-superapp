@@ -189,8 +189,8 @@ constructor(
         viewModelScope.launch {
             // current balance
 
-            val coin: Coin? = confirmedBalance.value
-
+            //val coin: Coin? = confirmedBalance.value
+            val coin: Coin = Coin.valueOf(1_600_000L)
             if (coin == null || coin.isZero) {
                 SnackbarHandler.displaySnackbar("No funds to distribute")
                 return@launch
