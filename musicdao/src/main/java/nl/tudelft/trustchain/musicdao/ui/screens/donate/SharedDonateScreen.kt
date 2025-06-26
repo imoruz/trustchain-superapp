@@ -108,12 +108,18 @@ fun SharedDonateScreen(
         val isSharedWallet = myWalletAddress == sharedWalletAddress
         if (isSharedWallet) {
             ArtistListenTable(artistListenTable)
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(20.dp))
             CustomMenuItem(
                 text = "Distribute Pro-rata",
-                onClick = { bitcoinWalletViewModel.distributeProportionally()}
+                onClick = { bitcoinWalletViewModel.distributeProportionally() }
             )
-
+            Spacer(modifier = Modifier.height(10.dp))
+            CustomMenuItem(
+                text = "Visualize Distribution",
+                onClick = {
+                    navController.navigate("visualize_distribution")
+                }
+            )
         }
         else {
             Spacer(modifier = Modifier.weight(1f))

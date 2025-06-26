@@ -12,14 +12,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
@@ -44,6 +37,7 @@ import nl.tudelft.trustchain.musicdao.core.repositories.model.Album
 import nl.tudelft.trustchain.musicdao.ui.screens.dao.*
 import nl.tudelft.trustchain.musicdao.ui.screens.debug.DebugScreenViewModel
 import nl.tudelft.trustchain.musicdao.ui.screens.donate.SharedDonateScreen
+import nl.tudelft.trustchain.musicdao.ui.screens.donate.VisualizeDistributionScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.home.HomeScreenViewModel
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.EditProfileScreen
 import nl.tudelft.trustchain.musicdao.ui.screens.profile.MyProfileScreen
@@ -246,6 +240,10 @@ fun AppNavigation(
                     navController = navController
                 )
             }
+            composable("visualize_distribution") {
+                VisualizeDistributionScreen(navController)
+            }
+
             composable(Screen.SharedWalletOverview.route) {
                 SharedWalletOverviewScreen(bitcoinWalletViewModel = hiltViewModel())
             }
