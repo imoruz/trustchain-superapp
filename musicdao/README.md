@@ -17,11 +17,37 @@ We break down the implementation in 2 important functionalities:
 
 2. **Discovering:** To receive these ipv8 messages that are sent duting the broadcast phase we have set up message handlers. The high level logic in these is pretty straightforward and in these handlers we basically keep track of the information that was received from the Shared Wallet device.
 
-### Pro Rata
-- pro rata -> talk about fairness
 
-### User Centric
-- user centric -> talk about fairness
+### Money distribution
+To ensure fairness, we use two different methods to calculate how much money each artist receives from the shared wallet:
+
+#### Pro Rata
+In the **Pro Rata** model, all revenue is pooled together and distributed among artists based on the **total number of listens** each artist receives across the platform.
+
+- **Formula:**  
+`(Listens of Artist A / Total Listens) × Total Revenue`
+
+
+- **Example:**  
+If Artist A is listened to 300 times, the total number of listens across the platform is 300,000, and the total revenue after fees is $600,000, then the amount Artist A receives is:
+
+    `(300 / 300000) × 600000 = 600`
+
+    So, Artist A receives **$600**.
+
+#### User Centric
+In the **User Centric** model, revenue is distributed based on the **listening habits of each individual user**. Each user’s payment values are split proportionally among the artists they listened to.
+
+- **Formula:**  
+`(Listens of Artist A by User 1 / Total Listens by User 1) × Revenue from User 1`
+
+
+- **Example:**  
+If User 1 has listened to a total of 400 tracks, and 80 of those were for Artist A, and the revenue from this user is $35, then the amount Artist A receives from this user is:
+
+    `(80 / 400) × 35 = 7`
+
+    So, Artist A receives **$7** from this user.
 
 
 
