@@ -1,27 +1,29 @@
-package nl.tudelft.trustchain.musicdao.core.util
-
+package nl.tudelft.trustchain.musicdao.core.utilcle
 import org.bitcoinj.wallet.Wallet
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
+import nl.tudelft.trustchain.musicdao.ui.screens.wallet.ListenStats
 
 /**
  * Scans all wallet transactions received by [myWalletAddress] since the later of:
  *  • [daysBack] days ago, or
- *  • the last transaction whose OP_RETURN metadata contains {"payment-mode":"PRO-RATA"}.
+ *  • the last transaction whose OP_RETURN metadata contains {"payment-mode":"PRO-RATA"} or {"payment-mode":"USER-CENTRIC"}.
  *
  * Returns a map of artist bitcoin addresses to total listen counts.
  */
+
+
 fun getArtistListenStatsForReceived(
     wallet: Wallet,
     myWalletAddress: String,
     daysBack: Int = 30
-): Map<String, Int> {
+): Map<String, ListenStats> {
     val calendar = Calendar.getInstance()
     calendar.add(Calendar.DAY_OF_YEAR, -daysBack)
     val cutoff30 = calendar.time
 
-    // Find the date of the most recent PRO-RATA payment
+    // Find the date of the most recent PRO-RATA or USER-CENTRIC payment
     val lastProRataDate: Date? = wallet.walletTransactions
         .mapNotNull { tx ->
             tx.transaction.updateTime?.takeIf {
@@ -31,9 +33,11 @@ fun getArtistListenStatsForReceived(
                     if (!script.isOpReturn) return@any false
                     val data = script.chunks.getOrNull(1)?.data ?: return@any false
                     try {
-                        JSONObject(String(data, Charsets.UTF_8))
+                        val paymentMode = JSONObject(String(data, Charsets.UTF_8))
                             .optString("payment-mode")
-                            .equals("PRO-RATA", ignoreCase = true)
+                        // directly return the comparison
+                        paymentMode.equals("PRO-RATA",   ignoreCase = true) ||
+                            paymentMode.equals("USER-CENTRIC", ignoreCase = true)
                     } catch (e: Exception) {
                         false
                     }
@@ -45,7 +49,10 @@ fun getArtistListenStatsForReceived(
     // Final cutoff is whichever is later
     val cutoff = listOfNotNull(cutoff30, lastProRataDate).maxOrNull()!!
 
-    val artistListenCounts = mutableMapOf<String, Int>()
+    val artistStatsMap = mutableMapOf<String, ListenStats>()
+
+    //val userArtistPayments = mutableMapOf<String, MutableMap<String, Long>>()
+
 
     // Scan only received transactions after that cutoff
     wallet.walletTransactions.forEach { tx ->
@@ -69,16 +76,46 @@ fun getArtistListenStatsForReceived(
         tx.transaction.outputs.forEach outputLoop@{ output ->
             val script = output.scriptPubKey
             if (!script.isOpReturn) return@outputLoop
-            val opData = script.chunks.getOrNull(1)?.data ?: return@outputLoop
-            val jsonString = String(opData, Charsets.UTF_8)
+            val rawOpData = script.chunks.getOrNull(1)?.data ?: return@outputLoop
 
+            val parts = String(rawOpData, Charsets.UTF_8).split(" ")
+            val a = parts[0]
+            val n = parts[1].toIntOrNull() ?: 0
+            val u = parts[2]
+            val un = parts[3].toIntOrNull() ?: 0
+
+            val jsonObject = JSONObject()
+            jsonObject.put("a", a)
+            jsonObject.put("n", n)
+            jsonObject.put("u", u)
+            jsonObject.put("un", un)
+
+            val jsonString = jsonObject.toString()
 
             runCatching {
                 JSONObject(jsonString).let { json ->
                     if (json.has("a") && json.has("n")) {
                         val artist = json.getString("a")
                         val count  = json.getInt("n")
-                        artistListenCounts[artist] = artistListenCounts.getOrDefault(artist, 0) + count
+                        val user = json.getString("u")
+//                        val userCount = json.getInt("un")
+
+                        val amountToArtist = tx.transaction.outputs
+                            .filter { output ->
+                                try {
+                                    val script = output.scriptPubKey
+                                    !script.isOpReturn &&
+                                        script.getToAddress(wallet.params).toString() == artist
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            }
+                            .sumOf { it.value.value }
+
+                        val stats = artistStatsMap.getOrPut(artist) { ListenStats() }
+                        stats.totalCount += count
+                        stats.userCounts[user] = stats.userCounts.getOrDefault(user, 0) + count
+                        stats.paymentAmounts[user] = stats.paymentAmounts.getOrDefault(user, 0) + amountToArtist
                     }
                 }
             }.onFailure {
@@ -86,10 +123,28 @@ fun getArtistListenStatsForReceived(
                     JSONArray(jsonString).let { arr ->
                         for (i in 0 until arr.length()) {
                             val item = arr.getJSONObject(i)
-                            if (item.has("a") && item.has("n")) {
+                            if (item.has("a") && item.has("n") && item.has("u") && item.has("ue")) {
                                 val artist = item.getString("a")
                                 val count  = item.getInt("n")
-                                artistListenCounts[artist] = artistListenCounts.getOrDefault(artist, 0) + count
+                                val user = item.getString("u")
+                                val userCount = item.getInt("un")
+
+                                val amountToArtist = tx.transaction.outputs
+                                    .filter { output ->
+                                        try {
+                                            val script = output.scriptPubKey
+                                            !script.isOpReturn &&
+                                                script.getToAddress(wallet.params).toString() == artist
+                                        } catch (e: Exception) {
+                                            false
+                                        }
+                                    }.sumOf { it.value.value }
+
+                                val stats = artistStatsMap.getOrPut(artist) { ListenStats() }
+                                stats.totalCount += count
+                                stats.userCounts[user] = stats.userCounts.getOrDefault(user, 0) + userCount
+                                stats.paymentAmounts[user] = stats.paymentAmounts.getOrDefault(user, 0) + amountToArtist
+
                             }
                         }
                     }
@@ -98,5 +153,5 @@ fun getArtistListenStatsForReceived(
         }
     }
 
-    return artistListenCounts
+    return artistStatsMap
 }
