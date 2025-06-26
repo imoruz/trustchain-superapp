@@ -86,7 +86,7 @@ constructor(
 
         viewModelScope.launch {
             sharedWalletCommunity.sharedWalletInfoState.collect { info ->
-                if (info != null && !sharedWalletCommunity.isSharedWallet) {
+                if (info != null) {
                     // Only update if this device is NOT the shared wallet
                     _sharedWalletBalance.value = Coin.valueOf(info.balanceSatoshi)
                     _sharedWalletTransactions.value = info.transactions
@@ -133,9 +133,9 @@ constructor(
     val artistListenTable: StateFlow<List<ArtistListen>> get() = _artistListenTable
 
     private val dummyArtistNameMap = mapOf(
-        "mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP" to "User A",
-        "n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc" to "User B",
-        "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy" to "User C"
+        "mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP" to "MegaPop",
+        "n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc" to "IndieA",
+        "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy" to "IndieB"
     )
 
 
@@ -152,12 +152,36 @@ constructor(
 
             //_artistListenTable.value = artistListenTable
             // Dummy data for testing
-            _artistListenTable.value = listOf(
-                ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP", 500, "userA", 50),
-                ArtistListen("n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc",  80, "userA", 30),
-                ArtistListen("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy", 40, "userC", 20)
-            )
-        }
+        /*artistListenTable.value = listOf(
+            ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP", 500, "userA", 50),
+            ArtistListen("n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc",  80, "userA", 30),
+            ArtistListen("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy", 40, "userC", 20)
+        )*/
+        _artistListenTable.value = listOf(
+            // U1
+            ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP", 1_000, "U1"),
+            ArtistListen("n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc",      30, "U1"),
+
+            // U2
+            ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP",   800, "U2"),
+            ArtistListen("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy",     50, "U2"),
+
+            // U3
+            ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP", 1_200, "U3"),
+
+            // U4
+            ArtistListen("n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc",    100, "U4"),
+            ArtistListen("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy",     80, "U4"),
+
+            // U5
+            ArtistListen("n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc",     60, "U5"),
+
+            // U6
+            ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP",   500, "U6"),
+            ArtistListen("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy",     40, "U6")
+        )
+
+    }
 
         fun requestFaucet() {
             viewModelScope.launch {

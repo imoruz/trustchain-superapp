@@ -79,7 +79,7 @@ class SharedWalletCommunity(
     suspend fun waitForPeers(retryCount: Int = 5, delayMillis: Long = 1500): List<Peer>? {
         repeat(retryCount) {
             val peers = getPeers()
-            if (!peers.isNullOrEmpty()) return peers
+            if (peers.isNotEmpty()) return peers
             Log.w("PeerWait", "No peers yet. Retrying... (${it + 1}/$retryCount)")
             delay(delayMillis)
         }
