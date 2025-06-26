@@ -433,7 +433,7 @@ constructor(
                 val ok = donateToAddress(
                     address  = addr,
                     amount   = shareBtc,
-                    metadata = """{"payment-mode":"PRO-RATA"}"""
+                    metadata = """{"payment-mode":"USER-CENTRIC"}"""
                 )
                 if (!ok) {
                     Log.e(TAG, "Failed to send $shareBtc BTC to $addr")

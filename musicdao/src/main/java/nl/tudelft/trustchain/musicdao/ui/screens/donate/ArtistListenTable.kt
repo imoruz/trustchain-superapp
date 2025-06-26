@@ -20,8 +20,7 @@ fun ArtistListenTable(listens: List<ArtistListen>) {
         ) {
             Text("Artist Address", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             Text("User Address", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            Text("Total Listens", fontWeight = FontWeight.Bold, modifier = Modifier.width(80.dp))
-            Text("Listens by user", fontWeight = FontWeight.Bold, modifier = Modifier.width(80.dp))
+            Text("Streams", fontWeight = FontWeight.Bold, modifier = Modifier.width(80.dp))
         }
         listens.forEach { listen ->
             Row(

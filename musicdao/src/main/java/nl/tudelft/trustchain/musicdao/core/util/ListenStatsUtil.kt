@@ -8,7 +8,7 @@ import nl.tudelft.trustchain.musicdao.ui.screens.wallet.ListenStats
 /**
  * Scans all wallet transactions received by [myWalletAddress] since the later of:
  *  • [daysBack] days ago, or
- *  • the last transaction whose OP_RETURN metadata contains {"payment-mode":"PRO-RATA"}.
+ *  • the last transaction whose OP_RETURN metadata contains {"payment-mode":"PRO-RATA"} or {"payment-mode":"USER-CENTRIC"}.
  *
  * Returns a map of artist bitcoin addresses to total listen counts.
  */
@@ -23,7 +23,7 @@ fun getArtistListenStatsForReceived(
     calendar.add(Calendar.DAY_OF_YEAR, -daysBack)
     val cutoff30 = calendar.time
 
-    // Find the date of the most recent PRO-RATA payment
+    // Find the date of the most recent PRO-RATA or USER-CENTRIC payment
     val lastProRataDate: Date? = wallet.walletTransactions
         .mapNotNull { tx ->
             tx.transaction.updateTime?.takeIf {
@@ -33,9 +33,11 @@ fun getArtistListenStatsForReceived(
                     if (!script.isOpReturn) return@any false
                     val data = script.chunks.getOrNull(1)?.data ?: return@any false
                     try {
-                        JSONObject(String(data, Charsets.UTF_8))
+                        val paymentMode = JSONObject(String(data, Charsets.UTF_8))
                             .optString("payment-mode")
-                            .equals("PRO-RATA", ignoreCase = true) //TODO: make it for USER_CENTRIC TOO
+                        // directly return the comparison
+                        paymentMode.equals("PRO-RATA",   ignoreCase = true) ||
+                            paymentMode.equals("USER-CENTRIC", ignoreCase = true)
                     } catch (e: Exception) {
                         false
                     }
@@ -96,7 +98,7 @@ fun getArtistListenStatsForReceived(
                         val artist = json.getString("a")
                         val count  = json.getInt("n")
                         val user = json.getString("u")
-                        val userCount = json.getInt("un")
+//                        val userCount = json.getInt("un")
 
                         val amountToArtist = tx.transaction.outputs
                             .filter { output ->
@@ -112,7 +114,7 @@ fun getArtistListenStatsForReceived(
 
                         val stats = artistStatsMap.getOrPut(artist) { ListenStats() }
                         stats.totalCount += count
-                        stats.userCounts[user] = stats.userCounts.getOrDefault(user, 0) + userCount
+                        stats.userCounts[user] = stats.userCounts.getOrDefault(user, 0) + count
                         stats.paymentAmounts[user] = stats.paymentAmounts.getOrDefault(user, 0) + amountToArtist
                     }
                 }
