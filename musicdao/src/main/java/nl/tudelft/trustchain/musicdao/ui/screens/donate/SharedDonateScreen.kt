@@ -122,29 +122,19 @@ fun SharedDonateScreen(
         val isSharedWallet = myWalletAddress == sharedWalletAddress
 
 
-        ArtistListenTable(artistListenTable)
-        Spacer(modifier = Modifier.weight(1f))
-        CustomMenuItem(
-            text = "Distribute Pro-rata",
-            onClick = { bitcoinWalletViewModel.distributeProportionally()}
-        )
-
-        CustomMenuItem(
-            text = "Distribute User-Centric",
-            onClick = { bitcoinWalletViewModel.distributeProportionallyUserCentric()}
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-        CustomMenuItem(text = "Confirm Send", onClick = { send() })
-
-
-        /*if (isSharedWallet) {
+        if (isSharedWallet) {
             ArtistListenTable(artistListenTable)
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.weight(1f))
             CustomMenuItem(
                 text = "Distribute Pro-rata",
                 onClick = { bitcoinWalletViewModel.distributeProportionally() }
             )
+
+            CustomMenuItem(
+                text = "Distribute User-Centric",
+                onClick = { bitcoinWalletViewModel.distributeProportionallyUserCentric() }
+            )
+
             Spacer(modifier = Modifier.height(10.dp))
             CustomMenuItem(
                 text = "Visualize Distribution",
@@ -153,10 +143,11 @@ fun SharedDonateScreen(
                 }
             )
         }
-        else {
+        else
+        {
             Spacer(modifier = Modifier.weight(1f))
             CustomMenuItem(text = "Confirm Send", onClick = { send() })
-        }*/
+        }
     }
 }
 

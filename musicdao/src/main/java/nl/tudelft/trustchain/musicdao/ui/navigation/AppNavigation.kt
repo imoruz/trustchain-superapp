@@ -241,7 +241,7 @@ fun AppNavigation(
                 )
             }
             composable("visualize_distribution") {
-                VisualizeDistributionScreen(navController)
+                VisualizeDistributionScreen(bitcoinWalletViewModel = hiltViewModel())
             }
 
             composable(Screen.SharedWalletOverview.route) {

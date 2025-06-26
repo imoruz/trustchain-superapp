@@ -61,8 +61,11 @@ constructor(
     private val _sharedWalletTransactions = MutableStateFlow<List<TransactionInfo>>(emptyList())
     val sharedWalletTransactions: StateFlow<List<TransactionInfo>> get() = _sharedWalletTransactions
 
-    private val gson = Gson()
+    private val _lastProRataStats = MutableStateFlow<List<DistributionStat>?>(null)
+    val lastProRataStats: StateFlow<List<DistributionStat>?> get() = _lastProRataStats
 
+    private val _lastUserCentricStats = MutableStateFlow<List<DistributionStat>?>(null)
+    val lastUserCentricStats: StateFlow<List<DistributionStat>?> get() = _lastUserCentricStats
 
     val faucetInProgress: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val isStarted: MutableStateFlow<Boolean> = MutableStateFlow(false)
@@ -124,14 +127,19 @@ constructor(
         }
     }
 
-        val myWalletAddress: String
-        get() = walletService.protocolAddress().toString()
+    val myWalletAddress: String get() = walletService.protocolAddress().toString()
 
-        private val _artistListenTable = MutableStateFlow<List<ArtistListen>>(emptyList())
-        val artistListenTable: StateFlow<List<ArtistListen>> get() = _artistListenTable
+    private val _artistListenTable = MutableStateFlow<List<ArtistListen>>(emptyList())
+    val artistListenTable: StateFlow<List<ArtistListen>> get() = _artistListenTable
 
-        fun updateArtistListenTable() {
-            val myWalletAddress = walletService.protocolAddress().toString()
+    private val dummyArtistNameMap = mapOf(
+        "mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP" to "User A",
+        "n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc" to "User B",
+        "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy" to "User C"
+    )
+
+
+    fun updateArtistListenTable() {
 
 //            val listenMap = getArtistListenStatsForReceived(walletService.wallet(), myWalletAddress)
 //
@@ -145,8 +153,8 @@ constructor(
             //_artistListenTable.value = artistListenTable
             // Dummy data for testing
             _artistListenTable.value = listOf(
-                ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP", 120, "userA", 50),
-                ArtistListen("1BoatSLRHtKNngkdXEeobR76b53LETtpyT",  80, "userA", 30),
+                ArtistListen("mzrrEk1zyB1Tj9zYnjcgFYsKtqHxN7KJSP", 500, "userA", 50),
+                ArtistListen("n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc",  80, "userA", 30),
                 ArtistListen("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy", 40, "userC", 20)
             )
         }
@@ -186,6 +194,7 @@ constructor(
 
 
     fun distributeProportionally() {
+        updateArtistListenTable()
         viewModelScope.launch {
             // current balance
 
@@ -213,10 +222,10 @@ constructor(
 
             // Compute total fee reserve
             val totalFeeSat = calculatedFeePerTx * table.size
-            if (totalSat <= totalFeeSat) {
+            /*if (totalSat <= totalFeeSat) {
                 SnackbarHandler.displaySnackbar("Not enough funds to cover fees $totalFeeSat sats")
                 return@launch
-            }
+            }*/
 
             // Distributable sats
             val distributableSat = totalSat - totalFeeSat
@@ -241,27 +250,35 @@ constructor(
             payments.forEach { (addr, shareSat) ->
                 val shareCoin = Coin.valueOf(shareSat)
                 val shareBtc  = shareCoin.toPlainString()
-                val ok = donateToAddress(
+                /*val ok = donateToAddress(
                     address  = addr,
                     amount   = shareBtc,
                     metadata = """{"payment-mode":"PRO-RATA"}"""
-                )
+                )*/
+                val ok = true
                 if (!ok) {
                     Log.e(TAG, "Failed to send $shareBtc BTC to $addr")
                     allSucceeded = false
                 }
             }
 
-            // 8️⃣ Final user feedback
             val distributedBtc = BigDecimal(distributableSat)
                 .divide(BigDecimal(100_000_000), 8, RoundingMode.HALF_UP)
                 .toPlainString()
 
-            if (allSucceeded) {
+            val stats = payments.map { (address, amount) ->
+                val percentage = amount.toFloat() / distributableSat.toFloat()
+                val artistName = dummyArtistNameMap[address] ?: (address.take(6) + "…")
+                DistributionStat(artistName, amount, percentage)
+            }
+            _lastProRataStats.value = stats
+            Log.i("BWVM-PRO" ,"Stats: ${lastProRataStats.value}")
+
+            /*if (allSucceeded) {
                 SnackbarHandler.displaySnackbar("Distributed $distributedBtc BTC (fees reserved)")
             } else {
                 SnackbarHandler.displaySnackbar("Some payments failed—check logs.")
-            }
+            }*/
         }
     }
 
@@ -269,8 +286,7 @@ constructor(
     fun distributeProportionallyUserCentric() {
         viewModelScope.launch {
             // current balance
-            val coin: Coin = Coin.valueOf(1_600_000L)
-            //val coin: Coin? = confirmedBalance.value
+            val coin: Coin? = confirmedBalance.value
             if (coin == null || coin.isZero) {
                 SnackbarHandler.displaySnackbar("No funds to distribute")
                 return@launch
@@ -303,7 +319,7 @@ constructor(
                 ),
 
                 // Artist 2
-                "1BoatSLRHtKNngkdXEeobR76b53LETtpyT" to ListenStats(
+                "n2hKFZgxYCV9s8XEkGkpEVhDUyxtGxgZXc" to ListenStats(
                     totalCount = 80,
                     userCounts = mutableMapOf(
                         "userA" to 30,
@@ -330,11 +346,6 @@ constructor(
             )
 
 
-            if (statsMap.isEmpty()) {
-                SnackbarHandler.displaySnackbar("No listen/payment data to distribute from")
-                return@launch
-            }
-
             // Estimate per-tx fee
             val feePerKB: Long = MIN_FEE_PER_KB
             val txSizeKB = ESTIMATED_KB_PER_TX
@@ -343,10 +354,10 @@ constructor(
 
             // Compute total fee reserve
             val totalFeeSat = calculatedFeePerTx * table.size
-            if (totalSat <= totalFeeSat) {
+           /* if (totalSat <= totalFeeSat) {
                 SnackbarHandler.displaySnackbar("Not enough funds to cover fees $totalFeeSat sats")
                 return@launch
-            }
+            }*/
 
             // Distributable sats
             val distributableSat = totalSat - totalFeeSat
@@ -430,11 +441,12 @@ constructor(
                 Log.d(TAG, "→ Amount in Satoshis: $shareSat")
                 Log.d(TAG, "→ Amount in BTC: $shareBtc")
 
-                val ok = donateToAddress(
+                /*val ok = donateToAddress(
                     address  = addr,
                     amount   = shareBtc,
                     metadata = """{"payment-mode":"USER-CENTRIC"}"""
-                )
+                )*/
+                val ok = true
                 if (!ok) {
                     Log.e(TAG, "Failed to send $shareBtc BTC to $addr")
                     allSucceeded = false
@@ -446,11 +458,19 @@ constructor(
                 .divide(BigDecimal(100_000_000), 8, RoundingMode.HALF_UP)
                 .toPlainString()
 
-            if (allSucceeded) {
+            val stats = payments.map { (address, amount) ->
+                val percentage = amount.toFloat() / distributableSat.toFloat()
+                val artistName = dummyArtistNameMap[address] ?: (address.take(6) + "…")
+                DistributionStat(artistName, amount, percentage)
+            }
+            _lastUserCentricStats.value = stats
+
+
+            /*if (allSucceeded) {
                 SnackbarHandler.displaySnackbar("Distributed $distributedBtc BTC (fees reserved)")
             } else {
                 SnackbarHandler.displaySnackbar("Some payments failed—check logs.")
-            }
+            }*/
         }
     }
 
@@ -462,3 +482,9 @@ constructor(
         const val TAG = "BitcoinWalletViewModel"
     }
 }
+
+data class DistributionStat(
+    val artistName: String,
+    val amountSat: Long,
+    val percentage: Float
+)
