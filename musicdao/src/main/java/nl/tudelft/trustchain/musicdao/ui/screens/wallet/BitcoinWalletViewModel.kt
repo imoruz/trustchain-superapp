@@ -210,9 +210,17 @@ constructor(
             val txSizeKB = ESTIMATED_KB_PER_TX
             val calculatedFeePerTx = (feePerKB * txSizeKB)
 
+            // Aggregate listens per artist
+            val listensPerArtist: Map<String, Long> =
+                table
+                    .groupBy { it.address }                  // group all rows by artist/address
+                    .mapValues { (_, rows) ->
+                        rows.sumOf { it.listens.toLong() }    // sum listens for each artist
+                    }
 
             // Compute total fee reserve
-            val totalFeeSat = calculatedFeePerTx * table.size
+            val numArtists = listensPerArtist.size
+            val totalFeeSat = calculatedFeePerTx * numArtists
             if (totalSat <= totalFeeSat) {
                 SnackbarHandler.displaySnackbar("Not enough funds to cover fees $totalFeeSat sats")
                 return@launch
@@ -222,22 +230,24 @@ constructor(
             val distributableSat = totalSat - totalFeeSat
 
             // Split distributable sats by listens
-            val totalListens = table.sumOf { it.listens }
+            val totalListens = listensPerArtist.values.sum()
             var allocated = 0L
-            val payments = table.mapIndexed { idx, artistListen ->
-                val rawShare = (distributableSat * artistListen.listens) / totalListens
-                allocated += rawShare
+            val payments: List<Pair<String, Long>> = listensPerArtist.entries
+                .mapIndexed { idx, (address, artistListens) ->
+                    val rawShare = (distributableSat * artistListens) / totalListens
+                    allocated += rawShare
 
-                // Give any leftover sats to the last artist
-                val finalShare = if (idx == table.lastIndex) {
-                    rawShare + (distributableSat - allocated)
-                } else rawShare
+                    // give any tiny rounding remainder to the last artist
+                    val finalShare = if (idx == listensPerArtist.size - 1) {
+                        rawShare + (distributableSat - allocated)
+                    } else rawShare
 
-                artistListen.address to finalShare
-            }
+                    address to finalShare
+                }
 
             // Send each payment (each will incur ~feePerTxSat sats in addition)
             var allSucceeded = true
+            Log.d("PRO RATA","payments :$payments")
             payments.forEach { (addr, shareSat) ->
                 val shareCoin = Coin.valueOf(shareSat)
                 val shareBtc  = shareCoin.toPlainString()
@@ -252,7 +262,7 @@ constructor(
                 }
             }
 
-            // 8️⃣ Final user feedback
+            // Final user feedback
             val distributedBtc = BigDecimal(distributableSat)
                 .divide(BigDecimal(100_000_000), 8, RoundingMode.HALF_UP)
                 .toPlainString()
