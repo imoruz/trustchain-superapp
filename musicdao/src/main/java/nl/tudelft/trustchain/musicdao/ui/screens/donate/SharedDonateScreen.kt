@@ -68,7 +68,7 @@ fun SharedDonateScreen(
 
             //val rawMetadata = "{\"a\":\"mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy\",\"n\":20, \"u\":\"test\",\"un\":20}"
             //val dummyMetadata = MetadataEncryption.encryptJson(rawMetadata, MetadataStorage.key!!)
-            val dummyMetadata = "mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy 20 mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy 10"
+            val dummyMetadata = "mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy 20 mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy"
 
             //val dummyMetadata = "{\"a\":\"mkfXARmxFKnTuK8pi8ghxVUAJrTxkTU8Zy\",\"n\":20, \"u\":\"test\",\"un\":20}"
             val result = bitcoinWalletViewModel.donateToAddress(sharedWalletAddress!!, amount.value, dummyMetadata)
