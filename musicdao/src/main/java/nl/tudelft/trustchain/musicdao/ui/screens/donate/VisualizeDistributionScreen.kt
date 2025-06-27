@@ -183,7 +183,6 @@ fun DistributionBarChart(data: List<DistributionStat>) {
                     )
                 }
             }
-            val extraStartPaddingPx = with(density) { 12.dp.toPx() }
 
             // X-axis artist labels
             Row(
@@ -197,12 +196,12 @@ fun DistributionBarChart(data: List<DistributionStat>) {
                 data.forEachIndexed { index, stat ->
                     Box(
                         modifier = Modifier
-                            .width(barWidth + spacing) // match bar width + spacing for exact alignment
+                            .width(barWidth + spacing)
                             .padding(horizontal = 0.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stat.artistName.take(6),
+                            text = stat.artistName.take(7),
                             color = Color.Black,
                             fontSize = 12.sp,
                             maxLines = 2,
