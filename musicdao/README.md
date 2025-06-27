@@ -26,7 +26,7 @@ Shared Wallet
 
 ![shared wallet device receives transaction.jpg](images/shared%20wallet%20device%20receives%20transaction.jpg)
 
-Lottery function - Statistics and visualization of distribution
+Money Distribution - Statistics and visualization
 
 ![Artist listens table.jpg](images/Artist%20listens%20table.jpg)
 
@@ -82,7 +82,6 @@ If User 1 has listened to a total of 400 tracks, and 80 of those were for Artist
     So, Artist A receives **$7** from this user.
 
 
-
 ## Future Work
 Below we list some ideas for future improvements to our project:
 
@@ -102,3 +101,4 @@ In this section we will describe some things that went well during the developme
 In this section we will describe some struggles we had during the project.
 
 - The codebase was quite large and overwhelming at times making it harder to get organized in the starting phase of the project.
+- We depended on external services to fund test wallets (BTC faucet) and show transactions on the receiver’s device. When these services went down at the last minute, we tried set up a local server based on `Tribler/bitcoin-regtest-node` server and use its `/addBTC` endpoint to add funds. While the server worked, linking it into the app took extra effort due to multiple changes in code and ultimately we were unsuccessful in the alternate server set up.
