@@ -1,8 +1,40 @@
 # Spotify 1 - Team 4
 
-Our goal for this project was to create a more fair way for artists to be paid. Normally, the top artists would get most of the money/donations. To address this imbalance, we introduced the concept of a Shared Wallet. Instead of donating to individual artists, users contribute to this Shared Wallet. Donations are then distributed based on a predefined "fair" algorithm, ensuring that smaller or emerging artists receive the support they need to grow.
+Our goal for this project was to create a more fair way for artists to be paid and reduce transaction fees from User donations. Normally, the top artists would get most of the money/donations. To address this imbalance, we introduced the concept of a Shared Wallet. Instead of donating to individual artists, users contribute to this Shared Wallet. Donations are then distributed based on a predefined "fair" algorithm, ensuring that smaller or emerging artists receive the support they need to grow.
 
 ## What have we done
+
+### App Improvements and fixes
+
+Detailed progress updates : https://github.com/Tribler/tribler/issues/8577
+
+We started with app improvements and fixes such as moving statistics to overlay tab, playing songs on start up, fixing number of peers discovered.
+Then we explored the ways to implement lottery function and compiled some interesting methodologies and benchmarks.
+We started implementation of this by creating a shared wallet architecture first using Nsd manager and then using ipv8 community. 
+We found ipv8 community to be easier to integrate with our infrastructure and so proceeded to make further enhancements.
+We used dummy statistics to mimic the behaviour of 2 lottery functions - pro-rata and user-centric approaches. We have then visualised these in our app.
+
+![Fullplayer screen on start up.jpg](images/Fullplayer%20screen%20on%20start%20up.jpg)
+
+![Overlay tab changes.jpg](images/Overlay%20tab%20changes.jpg)
+
+Shared Wallet
+
+![address of shared wallet.jpg](images/address%20of%20shared%20wallet.jpg)
+
+![Donate to shared wallet.jpg](images/Donate%20to%20shared%20wallet.jpg)
+
+![shared wallet device receives transaction.jpg](images/shared%20wallet%20device%20receives%20transaction.jpg)
+
+Lottery function - Statistics and visualization of distribution
+
+![Artist listens table.jpg](images/Artist%20listens%20table.jpg)
+
+![Options in shared wallet.jpg](images/Options%20in%20shared%20wallet.jpg)
+
+![visualizing prorata distribution.jpg](images/visualizing%20prorata%20distribution.jpg)
+
+![visualizing user centric distribution.jpg](images/visualizing%20user%20centric%20distribution.jpg)
 
 ### Shared Wallet Implementation
 In this section we will describe how the we implemented the Shared Wallet. 
